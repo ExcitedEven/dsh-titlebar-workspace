@@ -17,6 +17,9 @@ switch workspaces without opening the left sidebar.
   reaches the titlebar (its tooltip names the owning workspace); each workspace
   row carries its own aggregate; every conversation row carries its own dot
   (the same `StateDot` states as the sidebar).
+- Blank conversations follow the sidebar: only the **current** blank one is
+  listed (as `新对话`, always first); other blanks stay hidden and never count
+  toward any status or toward the click target.
 - The menu is a single workspace column; hovering (or focusing) a row opens a
   conversation flyout **anchored to that row**. It opens to the right of the
   menu when there is room and flips to the left when the viewport is too narrow,
@@ -27,8 +30,10 @@ switch workspaces without opening the left sidebar.
 - **Clicking a workspace opens its best conversation**: highest state first
   (warning > done > ongoing > idle), newest conversation last-wins among equal
   states, and a new conversation when the workspace is empty. The flyout keeps
-  `新建对话` (`uiWorkspace.startSession`) and the existing conversations
-  (`uiWorkspace.openSession`) for choosing a different one explicitly.
+  `新建对话` (`uiWorkspace.startSession`, which reuses an existing blank like the
+  sidebar button) and the existing conversations (`uiWorkspace.openSession`) for
+  choosing a different one explicitly. Creating keeps the flyout open so the new
+  `新对话` row is visible immediately.
 - Hidden in a plain browser (`html[data-windows-titlebar]` absent) and while the
   preload menubar is not mounted.
 

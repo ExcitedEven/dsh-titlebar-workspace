@@ -116,6 +116,7 @@ const zh = {
   "menu.empty": "还没有工作区",
   "menu.emptySessions": "还没有对话",
   "menu.current": "当前工作区",
+  "session.new": "新对话",
   "session.untitled": "未命名对话",
   "status.warning": "等待你处理",
   "status.ongoing": "运行中",
@@ -126,21 +127,25 @@ const t = (key, params) => (zh[key] ?? key).replace("{name}", params === undefin
 const workspaces = {
   phase: "ready",
   items: [
-    { workspaceId: "w1", title: "working-project", sessionIds: ["s1", "s2", "s5"], path: "/home/user/projects/working-project" },
+    { workspaceId: "w1", title: "working-project", sessionIds: ["s1", "s2", "s5", "s8", "s9"], path: "/home/user/projects/working-project" },
     { workspaceId: "w2", title: "pending-project", sessionIds: ["s3"], path: "/tmp/pending-project" },
     { workspaceId: "w3", title: "running-project", sessionIds: ["s4"], path: "/tmp/running-project" },
     { workspaceId: "w4", title: "tie-project", sessionIds: ["s6", "s7"], path: "/tmp/tie-project" },
+    { workspaceId: "w5", title: "empty-project", sessionIds: ["s10"], path: "/tmp/empty-project" },
   ],
 };
 const sessions = {
   byId: {
-    s1: { id: "s1", title: "done-session", updatedAt: 300, retainedBy: { mainView: 1 } },
+    s1: { id: "s1", title: "done-session", updatedAt: 300, retainedBy: {} },
     s2: { id: "s2", title: "old-session", updatedAt: 100, retainedBy: {} },
     s3: { id: "s3", title: "pending-session", updatedAt: 200, retainedBy: {} },
     s4: { id: "s4", title: "running-session", updatedAt: 250, retainedBy: {} },
     s5: { id: "s5", title: "another-running-session", updatedAt: 400, retainedBy: {} },
     s6: { id: "s6", title: "done-a", updatedAt: 500, retainedBy: {} },
     s7: { id: "s7", title: "done-b", updatedAt: 600, retainedBy: {} },
+    s8: { id: "s8", blank: true, updatedAt: 900, retainedBy: {} },
+    s9: { id: "s9", blank: true, updatedAt: 950, retainedBy: { mainView: 1 } },
+    s10: { id: "s10", blank: true, updatedAt: 960, retainedBy: {} },
   },
 };
 const statuses = new Map([
@@ -200,20 +205,20 @@ const dots = (row) => {
   if (menu.style.left !== "124px") throw new Error(`unexpected menu left: ${menu.style.left}`);
 
   let workspaceRows = [...menu.querySelectorAll("[role=menuitem]")];
-  if (workspaceRows.length !== 4) throw new Error(`expected 4 workspace rows, got ${workspaceRows.length}`);
+  if (workspaceRows.length !== 5) throw new Error(`expected 5 workspace rows, got ${workspaceRows.length}`);
   const rowStates = workspaceRows.map(dots);
-  if (rowStates.join(",") !== "done,warning,ongoing,done") throw new Error(`workspace dots: ${rowStates.join(",")}`);
+  if (rowStates.join(",") !== "done,warning,ongoing,done,idle") throw new Error(`workspace dots: ${rowStates.join(",")}`);
   if (workspaceRows[0].getAttribute("data-current") !== "true") throw new Error("current workspace not marked");
 
-  // The flyout shows the current workspace's conversations, newest first.
+  // The flyout mirrors the sidebar: current blank first as "新对话", other blanks hidden.
   let sessionsPane = window.document.querySelector(".tbw-sub");
   if (sessionsPane === null) throw new Error("flyout did not open");
   if (sessionsPane.style.left !== "342px") throw new Error(`flyout should sit right of the menu: ${sessionsPane.style.left}`);
   let sessionRows = [...sessionsPane.querySelectorAll("[role=menuitem]")];
-  if (sessionRows.map((row) => row.textContent).join("|") !== "another-running-session|done-session|old-session") {
+  if (sessionRows.map((row) => row.textContent).join("|") !== "新对话|another-running-session|done-session|old-session") {
     throw new Error(`unexpected first pane: ${sessionRows.map((row) => row.textContent).join("|")}`);
   }
-  if (sessionRows.map(dots).join(",") !== "ongoing,done,idle") throw new Error(`session dots: ${sessionRows.map(dots).join(",")}`);
+  if (sessionRows.map(dots).join(",") !== "idle,ongoing,done,idle") throw new Error(`session dots: ${sessionRows.map(dots).join(",")}`);
 
   // Hovering another workspace swaps the pane without navigating.
   workspaceRows[1].dispatchEvent(new window.MouseEvent("mouseover", { bubbles: true, relatedTarget: window.document.body }));
@@ -227,12 +232,15 @@ const dots = (row) => {
   if (dots(sessionRows[0]) !== "warning") throw new Error(`session dot: ${dots(sessionRows[0])}`);
   if (calls.length !== 0) throw new Error(`hover navigated: ${calls.join(",")}`);
 
-  // New conversation stays explicit, and reuses the primitives' new-chat icon.
-  if (sessionsPane.querySelector('.tbw-new [data-icon="new-chat"]') === null) throw new Error("new-chat icon missing: " + sessionsPane.querySelector(".tbw-new").outerHTML);
+  // New conversation keeps the flyout open so the provisional "新对话" row is visible.
+  if (sessionsPane.querySelector('.tbw-new [data-icon="new-chat"]') === null) throw new Error("new-chat icon missing");
   sessionsPane.querySelector(".tbw-new").dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
   await wait(30);
   if (calls.join(",") !== "new:w2") throw new Error(`new calls: ${calls.join(",")}`);
-  if (window.document.querySelector(".tbw-menu") !== null) throw new Error("menu stayed open after new");
+  if (window.document.querySelector(".tbw-menu") === null) throw new Error("menu closed after new");
+  window.document.querySelector(".tbw-menu").dispatchEvent(new window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  await wait(30);
+  if (window.document.querySelector(".tbw-menu") !== null) throw new Error("Escape did not close the menu");
 
   // Clicking a workspace opens its best conversation: warning first.
   chip.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
@@ -243,7 +251,7 @@ const dots = (row) => {
   if (calls.join(",") !== "new:w2,open:s3") throw new Error(`warning click: ${calls.join(",")}`);
   if (window.document.querySelector(".tbw-menu") !== null) throw new Error("menu stayed open after warning click");
 
-  // done beats ongoing inside one workspace.
+  // done beats ongoing inside one workspace; blanks never win.
   chip.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
   await wait(50);
   workspaceRows = [...window.document.querySelectorAll(".tbw-menu [role=menuitem]")];
@@ -258,6 +266,14 @@ const dots = (row) => {
   workspaceRows[3].dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
   await wait(30);
   if (calls.join(",") !== "new:w2,open:s3,open:s1,open:s7") throw new Error(`tie newest: ${calls.join(",")}`);
+
+  // A workspace with only a blank conversation reuses it instead of "opening" it.
+  chip.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+  await wait(50);
+  workspaceRows = [...window.document.querySelectorAll(".tbw-menu [role=menuitem]")];
+  workspaceRows[4].dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+  await wait(30);
+  if (calls.join(",") !== "new:w2,open:s3,open:s1,open:s7,new:w5") throw new Error(`blank workspace: ${calls.join(",")}`);
 
   // Placement follows the menubar when the sidebar collapses (left flips to 84px).
   hostRight = 156;
