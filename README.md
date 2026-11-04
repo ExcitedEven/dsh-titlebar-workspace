@@ -15,10 +15,13 @@ switch workspaces without opening the left sidebar.
 - The chip's dot is the **open conversation's** status; the workspace rows carry
   the aggregate; every conversation row in the right pane carries its own dot
   (same `StateDot` states as the sidebar: warning / ongoing / done / idle).
-- The menu is two panes: hovering a workspace shows its conversations on the
-  right, with `新建对话` (`uiWorkspace.startSession`) and the existing
-  conversations (`uiWorkspace.openSession`). Clicking a workspace row only
-  selects it, so it never creates a conversation by itself.
+- The menu is a single workspace column; hovering (or focusing) a row opens a
+  conversation flyout **anchored to that row**. It opens to the right of the
+  menu when there is room and flips to the left when the viewport is too narrow,
+  and its top is clamped inside the viewport. The flyout holds `新建对话`
+  (`uiWorkspace.startSession`) and the existing conversations
+  (`uiWorkspace.openSession`). Clicking a workspace row only selects it, so it
+  never creates a conversation by itself.
 - Hidden in a plain browser (`html[data-windows-titlebar]` absent) and while the
   preload menubar is not mounted.
 

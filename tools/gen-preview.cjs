@@ -19,9 +19,15 @@ global.document = window.document;
 global.Element = window.Element;
 global.MutationObserver = window.MutationObserver;
 
-window.document.getElementById("menu-host").getBoundingClientRect = () => ({
-  left: 48, right: 120, top: 0, bottom: 40, width: 72, height: 40, x: 48, y: 0, toJSON() {},
-});
+const rect = (left, top, width, height) => ({ left, top, right: left + width, bottom: top + height, width, height, x: left, y: top, toJSON() {} });
+window.Element.prototype.getBoundingClientRect = function getBoundingClientRect() {
+  if (this.id === "menu-host") return rect(48, 0, 98, 40);
+  const className = typeof this.className === "string" ? this.className : "";
+  if (className.indexOf("tbw-menu") >= 0) return rect(Number.parseFloat(this.style.left) || 0, 40, 216, 150);
+  if (className.indexOf("tbw-sub") >= 0) return rect(Number.parseFloat(this.style.left) || 0, Number.parseFloat(this.style.top) || 0, 300, 190);
+  if (className.indexOf("tbw-item") >= 0) return rect(150, 74, 200, 32);
+  return rect(0, 0, 0, 0);
+};
 window.__ModuleLoader__ = { load: (definition) => loaded.push(definition) };
 const loaded = [];
 const primitives = {
@@ -103,7 +109,7 @@ const wait = (ms = 40) => new Promise((resolve) => setTimeout(resolve, ms));
   await wait(80);
   window.document.querySelector(".tbw-button").dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
   await wait(60);
-  const rows = [...window.document.querySelectorAll(".tbw-colWorkspaces [role=menuitem]")];
+  const rows = [...window.document.querySelectorAll(".tbw-menu [role=menuitem]")];
   if (rows.length > 1) rows[1].dispatchEvent(new window.MouseEvent("mouseover", { bubbles: true, relatedTarget: window.document.body }));
   await wait(60);
 
@@ -111,9 +117,7 @@ const wait = (ms = 40) => new Promise((resolve) => setTimeout(resolve, ms));
     .exec(fs.readFileSync(path.join(__dirname, "..", "lib", "client.js"), "utf8"))[1]
     .replace(/^\s*\/\/.*$/gm, "");
   const pluginCss = [...css.matchAll(/"((?:[^"\\]|\\.)*)"/g)].map((match) => match[1]).join("");
-  const chipHtml = window.document.getElementById("root").innerHTML
-    .replaceAll("--tbw-left:124px", "--tbw-left:150px")
-    .replaceAll("left: 124px", "left: 150px");
+  const chipHtml = window.document.getElementById("root").innerHTML;
 
   const html = `<!doctype html>
 <html lang="zh-CN" data-windows-titlebar>

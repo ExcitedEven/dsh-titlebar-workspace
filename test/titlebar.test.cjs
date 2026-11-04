@@ -23,17 +23,26 @@ global.MutationObserver = window.MutationObserver;
 
 const host = window.document.getElementById("menu-host");
 let hostRight = 120;
-host.getBoundingClientRect = () => ({
-  left: hostRight - 72,
-  right: hostRight,
-  top: 0,
-  bottom: 40,
-  width: 72,
-  height: 40,
-  x: hostRight - 72,
-  y: 0,
+const rect = (left, top, width, height) => ({
+  left,
+  top,
+  right: left + width,
+  bottom: top + height,
+  width,
+  height,
+  x: left,
+  y: top,
   toJSON() {},
 });
+// jsdom does not lay out, so give every element the geometry the browser would.
+window.Element.prototype.getBoundingClientRect = function getBoundingClientRect() {
+  if (this.id === "menu-host") return rect(hostRight - 72, 0, 72, 40);
+  const className = typeof this.className === "string" ? this.className : "";
+  if (className.indexOf("tbw-menu") >= 0) return rect(Number.parseFloat(this.style.left) || 0, 40, 216, 140);
+  if (className.indexOf("tbw-sub") >= 0) return rect(Number.parseFloat(this.style.left) || 0, Number.parseFloat(this.style.top) || 0, 300, 160);
+  if (className.indexOf("tbw-item") >= 0 || className.indexOf("tbw-button") >= 0) return rect(124, 60, 200, 32);
+  return rect(0, 0, 0, 0);
+};
 
 const loaded = [];
 window.__ModuleLoader__ = {
@@ -182,15 +191,17 @@ const dots = (row) => {
   if (menu === null) throw new Error("menu did not open");
   if (menu.style.left !== "124px") throw new Error(`unexpected menu left: ${menu.style.left}`);
 
-  const workspaceRows = [...menu.querySelectorAll(".tbw-colWorkspaces [role=menuitem]")];
+  const workspaceRows = [...menu.querySelectorAll("[role=menuitem]")];
   if (workspaceRows.length !== 3) throw new Error(`expected 3 workspace rows, got ${workspaceRows.length}`);
   const rowStates = workspaceRows.map(dots);
   if (rowStates.join(",") !== "done,warning,ongoing") throw new Error(`workspace dots: ${rowStates.join(",")}`);
   if (workspaceRows[0].getAttribute("data-current") !== "true") throw new Error("current workspace not marked");
 
-  // The sessions pane shows the current workspace first.
-  let sessionsPane = window.document.querySelector(".tbw-colSessions");
-  let sessionRows = [...sessionsPane.querySelectorAll("[role=menu] [role=menuitem]")];
+  // The flyout shows the current workspace's conversations, placed to the right.
+  let sessionsPane = window.document.querySelector(".tbw-sub");
+  if (sessionsPane === null) throw new Error("flyout did not open");
+  if (sessionsPane.style.left !== "342px") throw new Error(`flyout should sit right of the menu: ${sessionsPane.style.left}`);
+  let sessionRows = [...sessionsPane.querySelectorAll("[role=menuitem]")];
   if (sessionRows.map((row) => row.textContent).join("|") !== "done-session|old-session") {
     throw new Error(`unexpected first pane: ${sessionRows.map((row) => row.textContent).join("|")}`);
   }
@@ -199,8 +210,9 @@ const dots = (row) => {
   // Hovering another workspace swaps the pane without creating anything.
   workspaceRows[1].dispatchEvent(new window.MouseEvent("mouseover", { bubbles: true, relatedTarget: window.document.body }));
   await wait(40);
-  sessionsPane = window.document.querySelector(".tbw-colSessions");
-  sessionRows = [...sessionsPane.querySelectorAll("[role=menu] [role=menuitem]")];
+  sessionsPane = window.document.querySelector(".tbw-sub");
+  sessionRows = [...sessionsPane.querySelectorAll("[role=menuitem]")];
+  if (sessionsPane.style.top === "0px") throw new Error("flyout was not anchored to the hovered row");
   if (sessionRows.length !== 1 || sessionRows[0].textContent !== "pending-session") {
     throw new Error(`unexpected second pane: ${sessionRows.map((row) => row.textContent).join("|")}`);
   }
@@ -216,10 +228,10 @@ const dots = (row) => {
   chip.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
   await wait(50);
   menu = window.document.querySelector(".tbw-menu");
-  const reopenedRows = [...window.document.querySelectorAll(".tbw-colWorkspaces [role=menuitem]")];
+  const reopenedRows = [...window.document.querySelectorAll(".tbw-menu [role=menuitem]")];
   reopenedRows[2].dispatchEvent(new window.MouseEvent("mouseover", { bubbles: true, relatedTarget: window.document.body }));
   await wait(30);
-  const busyRow = window.document.querySelector(".tbw-colSessions [role=menu] [role=menuitem]");
+  const busyRow = window.document.querySelector(".tbw-sub [role=menuitem]");
   busyRow.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
   await wait(30);
   if (calls.join(",") !== "new:w2,open:s4") throw new Error(`calls: ${calls.join(",")}`);
@@ -232,6 +244,20 @@ const dots = (row) => {
     throw new Error(`placement did not follow: ${container.querySelector(".tbw-root").style.getPropertyValue("--tbw-left")}`);
   }
 
+  // Narrow viewport flips the flyout to the left of the menu.
+  chip.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+  await wait(50);
+  Object.defineProperty(window, "innerWidth", { value: 480, configurable: true });
+  window.dispatchEvent(new window.Event("resize"));
+  await wait(40);
+  menu = window.document.querySelector(".tbw-menu");
+  if (menu === null) throw new Error("menu closed during resize");
+  const sub = window.document.querySelector(".tbw-sub");
+  if (sub === null) throw new Error("flyout missing after resize");
+  const menuRect = menu.getBoundingClientRect();
+  const expected = Math.max(8, Math.round(menuRect.left - 300 - 2));
+  if (sub.style.left !== expected + "px") throw new Error(`flyout should flip left: ${sub.style.left} != ${expected}px`);
+
   console.log("chip label:", chip.textContent, "dot:", dots(chip));
   console.log("workspace dots:", rowStates.join(","));
   console.log("calls:", calls.join(","));
@@ -239,6 +265,6 @@ const dots = (row) => {
   console.log("all DOM assertions passed");
   process.exit(0);
 })().catch((error) => {
-  console.error("FAILED:", error.message);
+  console.error("FAILED:", error.stack);
   process.exit(1);
 });
