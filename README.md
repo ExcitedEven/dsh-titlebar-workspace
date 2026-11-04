@@ -4,6 +4,13 @@ A Desktop-only workspace chip in the **caption titlebar**, sitting right after
 the preload's 应用 / 编辑 menu and showing the current workspace. Click it to
 switch workspaces without opening the left sidebar.
 
+- The chip lives in the `shell.overlay` slot; the dropdown and its flyout are
+  rendered through a `react-dom` portal into `document.body` with `z-index`
+  above every in-page layer. The overlay slot is a stacking context
+  (`z-index: 20`), so a child of it can never paint above the right sidebar
+  (whose own layers reach `z-index: 90`). A plugin cannot ask for a native
+  Electron menu: the desktop IPC only accepts the caption names `application`
+  and `edit`.
 - Rendered into the `shell.overlay` slot (frame-wide floating layer), then
   positioned into the 40px titlebar strip: same 28px button height, 6px radius,
   14px label, secondary label color and hover fill as the caption menu, so it

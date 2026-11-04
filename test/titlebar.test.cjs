@@ -9,6 +9,7 @@ const { createRoot } = require("react-dom/client");
 const dom = new JSDOM(
   `<!doctype html><html lang="zh-CN" data-windows-titlebar=""><head></head><body>
      <div id="menu-host" data-windows-menu=""></div>
+     <div id="hidden-dialog" role="dialog" aria-modal="true"></div>
      <div id="root"></div>
    </body></html>`,
   { pretendToBeVisual: true, url: "https://example.test/" },
@@ -41,7 +42,12 @@ window.Element.prototype.getBoundingClientRect = function getBoundingClientRect(
   if (className.indexOf("tbw-menu") >= 0) return rect(Number.parseFloat(this.style.left) || 0, 40, 216, 140);
   if (className.indexOf("tbw-sub") >= 0) return rect(Number.parseFloat(this.style.left) || 0, Number.parseFloat(this.style.top) || 0, 300, 160);
   if (className.indexOf("tbw-item") >= 0 || className.indexOf("tbw-button") >= 0) return rect(124, 60, 200, 32);
+  if (this.id === "visible-dialog") return rect(200, 200, 320, 200);
   return rect(0, 0, 0, 0);
+};
+window.Element.prototype.getClientRects = function getClientRects() {
+  const box = this.getBoundingClientRect();
+  return box.width > 0 && box.height > 0 ? [box] : [];
 };
 
 const loaded = [];
@@ -63,6 +69,7 @@ const definition = loaded[0];
 if (definition.id !== "dsh-titlebar-workspace") throw new Error(`unexpected id ${definition.id}`);
 const exportsObject = definition.factory((name) => {
   if (name === "react") return React;
+  if (name === "react-dom") return require("react-dom");
   if (name === "@deepseek-ai/dsh-client-ui-primitives") return primitives;
   throw new Error(`unexpected require: ${name}`);
 });
@@ -295,6 +302,15 @@ const dots = (row) => {
   const menuRect = menu.getBoundingClientRect();
   const expected = Math.max(8, Math.round(menuRect.left - 300 - 2));
   if (sub.style.left !== expected + "px") throw new Error(`flyout should flip left: ${sub.style.left} != ${expected}px`);
+
+  // A visible dialog closes the menu; the hidden one above never does.
+  const dialog = window.document.createElement("div");
+  dialog.id = "visible-dialog";
+  dialog.setAttribute("role", "dialog");
+  dialog.setAttribute("aria-modal", "true");
+  window.document.body.append(dialog);
+  await wait(40);
+  if (window.document.querySelector(".tbw-menu") !== null) throw new Error("visible dialog did not close the menu");
 
   console.log("chip label:", chip.textContent, "dot:", dots(chip));
   console.log("workspace dots:", rowStates.join(","));

@@ -39,6 +39,7 @@ require("../lib/client.js");
 const definition = loaded[0];
 const exportsObject = definition.factory((name) => {
   if (name === "react") return React;
+  if (name === "react-dom") return require("react-dom");
   if (name === "@deepseek-ai/dsh-client-ui-primitives") return primitives;
   throw new Error(name);
 });
@@ -120,6 +121,10 @@ const wait = (ms = 40) => new Promise((resolve) => setTimeout(resolve, ms));
     .replace(/^\s*\/\/.*$/gm, "");
   const pluginCss = [...css.matchAll(/"((?:[^"\\]|\\.)*)"/g)].map((match) => match[1]).join("");
   const chipHtml = window.document.getElementById("root").innerHTML;
+  const panelsHtml = [...window.document.body.children]
+    .filter((element) => element.classList && (element.classList.contains("tbw-menu") || element.classList.contains("tbw-sub")))
+    .map((element) => element.outerHTML)
+    .join("");
 
   const html = `<!doctype html>
 <html lang="zh-CN" data-windows-titlebar>
@@ -142,6 +147,7 @@ const wait = (ms = 40) => new Promise((resolve) => setTimeout(resolve, ms));
 <div class="caption"><div role="menubar"><button type="button" role="menuitem" aria-haspopup="menu" aria-expanded="false">应用</button><button type="button" role="menuitem" aria-haspopup="menu" aria-expanded="false">编辑</button></div></div>
 <div class="frame"><div class="fake"></div></div>
 ${chipHtml}
+${panelsHtml}
 </html>`;
 
   fs.writeFileSync(path.join(__dirname, "titlebar-preview.html"), html);
