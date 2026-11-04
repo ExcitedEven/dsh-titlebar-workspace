@@ -53,6 +53,7 @@ window.__ModuleLoader__ = {
 
 const primitives = {
   IconChevronDownOutlineRegular: (props) => React.createElement("svg", { "data-icon": "chevron", width: props.size, height: props.size }),
+  IconNewChatOutlineRegular: (props) => React.createElement("svg", { "data-icon": "new-chat", width: props.size, height: props.size }),
   StateDot: (props) => React.createElement("span", { "data-state-dot": props.state }),
 };
 
@@ -226,7 +227,8 @@ const dots = (row) => {
   if (dots(sessionRows[0]) !== "warning") throw new Error(`session dot: ${dots(sessionRows[0])}`);
   if (calls.length !== 0) throw new Error(`hover navigated: ${calls.join(",")}`);
 
-  // New conversation stays explicit.
+  // New conversation stays explicit, and reuses the primitives' new-chat icon.
+  if (sessionsPane.querySelector('.tbw-new [data-icon="new-chat"]') === null) throw new Error("new-chat icon missing: " + sessionsPane.querySelector(".tbw-new").outerHTML);
   sessionsPane.querySelector(".tbw-new").dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
   await wait(30);
   if (calls.join(",") !== "new:w2") throw new Error(`new calls: ${calls.join(",")}`);

@@ -32,6 +32,7 @@ window.__ModuleLoader__ = { load: (definition) => loaded.push(definition) };
 const loaded = [];
 const primitives = {
   IconChevronDownOutlineRegular: (props) => React.createElement("svg", { width: 12, height: 12, viewBox: "0 0 12 12", fill: "none" }, React.createElement("path", { d: "M3 4.5L6 7.5L9 4.5", stroke: "currentColor", "strokeWidth": "1.2", "strokeLinecap": "round", "strokeLinejoin": "round" })),
+  IconNewChatOutlineRegular: (props) => React.createElement("svg", { width: props.size, height: props.size, viewBox: "0 0 16 16", fill: "none" }, React.createElement("rect", { x: "2.5", y: "3", width: "11", height: "10", rx: "2.5", stroke: "currentColor", strokeWidth: "1.2" }), React.createElement("path", { d: "M8 6v4M6 8h4", stroke: "currentColor", strokeWidth: "1.2", strokeLinecap: "round" })),
   StateDot: ({ state, size }) => React.createElement("span", { style: { display: "inline-block", width: (size ?? 10) + "px", height: (size ?? 10) + "px", borderRadius: "50%", background: state === "warning" ? "#f5c518" : state === "done" ? "#3ecf8e" : "#4aa3ff" } }),
 };
 require("../lib/client.js");

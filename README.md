@@ -21,6 +21,9 @@ switch workspaces without opening the left sidebar.
   conversation flyout **anchored to that row**. It opens to the right of the
   menu when there is room and flips to the left when the viewport is too narrow,
   and its top is clamped inside the viewport.
+- The flyout's new-conversation row reuses `IconNewChatOutlineRegular` from the
+  shared `@deepseek-ai/dsh-client-ui-primitives` module — the same export the
+  sidebar's New Session button renders; nothing is copied into this package.
 - **Clicking a workspace opens its best conversation**: highest state first
   (warning > done > ongoing > idle), newest conversation last-wins among equal
   states, and a new conversation when the workspace is empty. The flyout keeps
