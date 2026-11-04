@@ -46,12 +46,19 @@ exportsObject.apply({
 
 const t = (key, params) => {
   const zh = {
-    "chip.aria": "当前工作区：{name}，打开切换菜单",
+    "chip.aria": "当前工作区：{name}，打开工作区菜单",
     "chip.choose": "选择工作区",
     "chip.untitled": "未命名工作区",
-    "menu.label": "切换工作区",
+    "menu.workspaces": "工作区",
+    "menu.sessions": "对话",
+    "menu.new": "新建对话",
     "menu.empty": "还没有工作区",
+    "menu.emptySessions": "还没有对话",
     "menu.current": "当前工作区",
+    "session.untitled": "未命名对话",
+    "status.warning": "等待你处理",
+    "status.ongoing": "运行中",
+    "status.done": "刚完成",
   };
   return (zh[key] ?? key).replace("{name}", params === undefined ? "" : String(params.name));
 };
@@ -63,9 +70,17 @@ const workspaces = {
     { workspaceId: "w3", title: "running-project", sessionIds: ["s4"], path: "/tmp/running-project" },
   ],
 };
-const sessions = { byId: { s1: { id: "s1", retainedBy: { mainView: 1 } } } };
+const sessions = {
+  byId: {
+    s1: { id: "s1", title: "write-the-docs", updatedAt: 300, retainedBy: { mainView: 1 } },
+    s2: { id: "s2", title: "old-session", updatedAt: 100, retainedBy: {} },
+    s3: { id: "s3", title: "review-changes", updatedAt: 200, retainedBy: {} },
+    s4: { id: "s4", title: "run-tests", updatedAt: 250, retainedBy: {} },
+  },
+};
 const statuses = new Map([
   ["s1", { running: false, completionUnread: true }],
+  ["s2", { running: false }],
   ["s3", { running: false, pendingInteraction: { kind: "approval" } }],
   ["s4", { running: true }],
 ]);
@@ -76,7 +91,8 @@ root.render(
     useWorkspaces: (selector) => selector(workspaces),
     useSessions: (selector) => selector(sessions),
     useSessionStatus: (selector) => selector(statuses),
-    switchTo: async () => {},
+    openSession: async () => {},
+    newSession: async () => {},
     t,
   }),
 );
@@ -86,6 +102,9 @@ const wait = (ms = 40) => new Promise((resolve) => setTimeout(resolve, ms));
 (async () => {
   await wait(80);
   window.document.querySelector(".tbw-button").dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+  await wait(60);
+  const rows = [...window.document.querySelectorAll(".tbw-colWorkspaces [role=menuitem]")];
+  if (rows.length > 1) rows[1].dispatchEvent(new window.MouseEvent("mouseover", { bubbles: true, relatedTarget: window.document.body }));
   await wait(60);
 
   const css = /const CSS = \[([\s\S]*?)\]\.join\(""\);/

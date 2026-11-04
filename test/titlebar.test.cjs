@@ -1,6 +1,6 @@
-// DOM integration smoke test for dsh-titlebar-workspace: mounts the chip into
-// jsdom the way the app would and checks the measured position, the workspace
-// list and the switch call.
+// DOM integration smoke test for dsh-titlebar-workspace: mounts the chip in
+// jsdom the way the app would and checks the measured placement, the two-pane
+// menu (workspaces + conversations), per-conversation dots and the two actions.
 
 const { JSDOM } = require("jsdom");
 const React = require("react");
@@ -19,16 +19,18 @@ global.window = window;
 global.document = window.document;
 global.Element = window.Element;
 global.MutationObserver = window.MutationObserver;
-// jsdom has no ResizeObserver: the plugin must fall back to polling + resize.
+// jsdom has no ResizeObserver: the plugin falls back to polling + resize.
 
-window.document.getElementById("menu-host").getBoundingClientRect = () => ({
-  left: 48,
-  right: 120,
+const host = window.document.getElementById("menu-host");
+let hostRight = 120;
+host.getBoundingClientRect = () => ({
+  left: hostRight - 72,
+  right: hostRight,
   top: 0,
   bottom: 40,
   width: 72,
   height: 40,
-  x: 48,
+  x: hostRight - 72,
   y: 0,
   toJSON() {},
 });
@@ -56,7 +58,7 @@ const exportsObject = definition.factory((name) => {
 });
 
 const registrations = [];
-const opened = [];
+const calls = [];
 const ctx = {
   effect(effect) {
     effect();
@@ -78,8 +80,12 @@ const ctx = {
     },
   },
   uiWorkspace: {
-    openWorkspace(workspaceId) {
-      opened.push(workspaceId);
+    openSession(sessionId) {
+      calls.push(`open:${sessionId}`);
+      return Promise.resolve();
+    },
+    startSession(workspaceId) {
+      calls.push(`new:${workspaceId}`);
       return Promise.resolve();
     },
   },
@@ -90,18 +96,22 @@ const registration = registrations.find((entry) => entry.declaration.name === "s
 if (registration === void 0) throw new Error("shell.overlay occupant was not registered");
 if (registration.declaration.id !== "titlebar-workspace") throw new Error("unexpected cell id");
 
-const t = (key, params) => {
-  const zh = {
-    "chip.aria": "当前工作区：{name}，打开切换菜单",
-    "chip.choose": "选择工作区",
-    "chip.untitled": "未命名工作区",
-    "menu.label": "切换工作区",
-    "menu.empty": "还没有工作区",
-    "menu.current": "当前工作区",
-  };
-  const template = zh[key] ?? key;
-  return template.replace("{name}", params === undefined ? "" : String(params.name));
+const zh = {
+  "chip.aria": "当前工作区：{name}，打开工作区菜单",
+  "chip.choose": "选择工作区",
+  "chip.untitled": "未命名工作区",
+  "menu.workspaces": "工作区",
+  "menu.sessions": "对话",
+  "menu.new": "新建对话",
+  "menu.empty": "还没有工作区",
+  "menu.emptySessions": "还没有对话",
+  "menu.current": "当前工作区",
+  "session.untitled": "未命名对话",
+  "status.warning": "等待你处理",
+  "status.ongoing": "运行中",
+  "status.done": "刚完成",
 };
+const t = (key, params) => (zh[key] ?? key).replace("{name}", params === undefined ? "" : String(params.name));
 
 const workspaces = {
   phase: "ready",
@@ -111,9 +121,17 @@ const workspaces = {
     { workspaceId: "w3", title: "running-project", sessionIds: ["s4"], path: "/tmp/running-project" },
   ],
 };
-const sessions = { byId: { s1: { id: "s1", retainedBy: { mainView: 1 } }, s2: { id: "s2", retainedBy: {} } } };
+const sessions = {
+  byId: {
+    s1: { id: "s1", title: "done-session", updatedAt: 300, retainedBy: { mainView: 1 } },
+    s2: { id: "s2", title: "old-session", updatedAt: 100, retainedBy: {} },
+    s3: { id: "s3", title: "pending-session", updatedAt: 200, retainedBy: {} },
+    s4: { id: "s4", title: "running-session", updatedAt: 250, retainedBy: {} },
+  },
+};
 const statuses = new Map([
   ["s1", { running: false, completionUnread: true }],
+  ["s2", { running: false }],
   ["s3", { running: false, pendingInteraction: { kind: "approval" } }],
   ["s4", { running: true }],
 ]);
@@ -126,53 +144,98 @@ root.render(
     useWorkspaces: (selector) => selector(workspaces),
     useSessions: (selector) => selector(sessions),
     useSessionStatus: (selector) => selector(statuses),
-    switchTo: (workspaceId) => {
-      opened.push(workspaceId);
+    openSession: (sessionId) => {
+      calls.push(`open:${sessionId}`);
+      return Promise.resolve();
+    },
+    newSession: (workspaceId) => {
+      calls.push(`new:${workspaceId}`);
       return Promise.resolve();
     },
     t,
   }),
 );
 
-const wait = (ms = 30) => new Promise((resolve) => setTimeout(resolve, ms));
+const wait = (ms = 40) => new Promise((resolve) => setTimeout(resolve, ms));
+const dots = (row) => {
+  const dot = row.querySelector("[data-state-dot]");
+  return dot === null ? "idle" : dot.getAttribute("data-state-dot");
+};
 
 (async () => {
-  await wait(60);
+  await wait(90);
 
   const chip = container.querySelector(".tbw-button");
   if (chip === null) throw new Error("chip button did not render");
   if (chip.textContent !== "DSH") throw new Error(`unexpected chip label: ${chip.textContent}`);
   const rootEl = container.querySelector(".tbw-root");
-  if (rootEl === null) throw new Error("chip root missing");
   if (rootEl.style.getPropertyValue("--tbw-left") !== "124px") {
     throw new Error(`unexpected placement: ${rootEl.style.getPropertyValue("--tbw-left")}`);
   }
-  if (chip.getAttribute("aria-expanded") !== "false") throw new Error("aria-expanded should start false");
+  // The chip reports the open conversation's status.
+  if (dots(chip) !== "done") throw new Error(`chip dot: ${dots(chip)}`);
 
   chip.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
-  await wait(30);
+  await wait(50);
 
-  const menu = window.document.querySelector(".tbw-menu");
+  let menu = window.document.querySelector(".tbw-menu");
   if (menu === null) throw new Error("menu did not open");
   if (menu.style.left !== "124px") throw new Error(`unexpected menu left: ${menu.style.left}`);
-  const rows = [...menu.querySelectorAll('[role="menuitemradio"]')];
-  if (rows.length !== 3) throw new Error(`expected 3 workspace rows, got ${rows.length}`);
-  if (rows[0].textContent.indexOf("DSH") < 0) throw new Error("first row label missing");
-  if (rows[0].getAttribute("aria-checked") !== "true") throw new Error("current workspace not checked");
-  const chipDot = container.querySelector(".tbw-button .tbw-dot [data-state-dot]");
-  if (chipDot === null || chipDot.getAttribute("data-state-dot") !== "done") throw new Error("chip dot should show done");
-  const rowStates = rows.map((row) => (row.querySelector("[data-state-dot]")?.getAttribute("data-state-dot") ?? "idle"));
-  if (rowStates.join(",") !== "done,warning,ongoing") throw new Error(`row dots: ${rowStates.join(",")}`);
 
-  rows[1].dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+  const workspaceRows = [...menu.querySelectorAll(".tbw-colWorkspaces [role=menuitem]")];
+  if (workspaceRows.length !== 3) throw new Error(`expected 3 workspace rows, got ${workspaceRows.length}`);
+  const rowStates = workspaceRows.map(dots);
+  if (rowStates.join(",") !== "done,warning,ongoing") throw new Error(`workspace dots: ${rowStates.join(",")}`);
+  if (workspaceRows[0].getAttribute("data-current") !== "true") throw new Error("current workspace not marked");
+
+  // The sessions pane shows the current workspace first.
+  let sessionsPane = window.document.querySelector(".tbw-colSessions");
+  let sessionRows = [...sessionsPane.querySelectorAll("[role=menu] [role=menuitem]")];
+  if (sessionRows.map((row) => row.textContent).join("|") !== "done-session|old-session") {
+    throw new Error(`unexpected first pane: ${sessionRows.map((row) => row.textContent).join("|")}`);
+  }
+  if (sessionRows.map(dots).join(",") !== "done,idle") throw new Error(`session dots: ${sessionRows.map(dots).join(",")}`);
+
+  // Hovering another workspace swaps the pane without creating anything.
+  workspaceRows[1].dispatchEvent(new window.MouseEvent("mouseover", { bubbles: true, relatedTarget: window.document.body }));
+  await wait(40);
+  sessionsPane = window.document.querySelector(".tbw-colSessions");
+  sessionRows = [...sessionsPane.querySelectorAll("[role=menu] [role=menuitem]")];
+  if (sessionRows.length !== 1 || sessionRows[0].textContent !== "pending-session") {
+    throw new Error(`unexpected second pane: ${sessionRows.map((row) => row.textContent).join("|")}`);
+  }
+  if (dots(sessionRows[0]) !== "warning") throw new Error(`session dot: ${dots(sessionRows[0])}`);
+
+  // New conversation is explicit.
+  sessionsPane.querySelector(".tbw-new").dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
   await wait(30);
-  if (opened.join(",") !== "w2") throw new Error(`switchTo calls: ${opened.join(",")}`);
-  if (window.document.querySelector(".tbw-menu") !== null) throw new Error("menu stayed open after choosing");
+  if (calls.join(",") !== "new:w2") throw new Error(`new calls: ${calls.join(",")}`);
+  if (window.document.querySelector(".tbw-menu") !== null) throw new Error("menu stayed open after new");
 
-  console.log("chip label:", chip.textContent);
-  console.log("placement:", rootEl.style.getPropertyValue("--tbw-left"));
-  console.log("menu rows:", rows.map((row) => row.textContent).join(" | "));
-  console.log("switchTo:", opened.join(","));
+  // Opening an existing conversation.
+  chip.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+  await wait(50);
+  menu = window.document.querySelector(".tbw-menu");
+  const reopenedRows = [...window.document.querySelectorAll(".tbw-colWorkspaces [role=menuitem]")];
+  reopenedRows[2].dispatchEvent(new window.MouseEvent("mouseover", { bubbles: true, relatedTarget: window.document.body }));
+  await wait(30);
+  const busyRow = window.document.querySelector(".tbw-colSessions [role=menu] [role=menuitem]");
+  busyRow.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+  await wait(30);
+  if (calls.join(",") !== "new:w2,open:s4") throw new Error(`calls: ${calls.join(",")}`);
+  if (window.document.querySelector(".tbw-menu") !== null) throw new Error("menu stayed open after open");
+
+  // Placement follows the menubar when the sidebar collapses (left flips to 84px).
+  hostRight = 156;
+  await wait(260);
+  if (container.querySelector(".tbw-root").style.getPropertyValue("--tbw-left") !== "160px") {
+    throw new Error(`placement did not follow: ${container.querySelector(".tbw-root").style.getPropertyValue("--tbw-left")}`);
+  }
+
+  console.log("chip label:", chip.textContent, "dot:", dots(chip));
+  console.log("workspace dots:", rowStates.join(","));
+  console.log("calls:", calls.join(","));
+  console.log("placement after layout shift:", container.querySelector(".tbw-root").style.getPropertyValue("--tbw-left"));
   console.log("all DOM assertions passed");
   process.exit(0);
 })().catch((error) => {
