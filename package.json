@@ -40,5 +40,14 @@
     "@deepseek-ai/dsh": {
       "optional": true
     }
+  },
+  "scripts": {
+    "test": "node test/titlebar.test.cjs",
+    "preview": "node tools/gen-preview.cjs"
+  },
+  "devDependencies": {
+    "jsdom": "^26.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   }
 }

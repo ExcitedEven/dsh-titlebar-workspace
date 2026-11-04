@@ -26,10 +26,11 @@ Removing the bundle restores the stock titlebar.
 
 ## Test
 
-`.harness/test-titlebar.cjs` mounts the chip in jsdom with a fake caption bar,
-asserts the measured placement (menubar right + 4px), the workspace rows and the
-`openWorkspace` call. `.harness/gen-titlebar-preview.cjs` renders
-`titlebar-preview.html` for a visual check against the 应用 / 编辑 bar.
+```sh
+npm install   # react, react-dom, jsdom (dev only)
+npm test      # jsdom mount: placement, workspace rows, status dots, switch call
+npm run preview   # writes titlebar-preview.html for a visual check
+```
 
 ---
 
