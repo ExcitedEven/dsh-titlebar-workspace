@@ -12,16 +12,20 @@ switch workspaces without opening the left sidebar.
   84px through `--dsh-windows-menu-start` when the sidebar collapses, without
   changing its width. The chip re-measures the bar's right edge (ResizeObserver,
   window resize and a 200ms poll that updates only on a real change).
-- The chip's dot is the **open conversation's** status; the workspace rows carry
-  the aggregate; every conversation row in the right pane carries its own dot
-  (same `StateDot` states as the sidebar: warning / ongoing / done / idle).
+- Attention order everywhere is **warning > done > ongoing > idle**. The chip
+  carries the roster-wide highest state, so a warning in another workspace still
+  reaches the titlebar (its tooltip names the owning workspace); each workspace
+  row carries its own aggregate; every conversation row carries its own dot
+  (the same `StateDot` states as the sidebar).
 - The menu is a single workspace column; hovering (or focusing) a row opens a
   conversation flyout **anchored to that row**. It opens to the right of the
   menu when there is room and flips to the left when the viewport is too narrow,
-  and its top is clamped inside the viewport. The flyout holds `新建对话`
-  (`uiWorkspace.startSession`) and the existing conversations
-  (`uiWorkspace.openSession`). Clicking a workspace row only selects it, so it
-  never creates a conversation by itself.
+  and its top is clamped inside the viewport.
+- **Clicking a workspace opens its best conversation**: highest state first
+  (warning > done > ongoing > idle), newest conversation last-wins among equal
+  states, and a new conversation when the workspace is empty. The flyout keeps
+  `新建对话` (`uiWorkspace.startSession`) and the existing conversations
+  (`uiWorkspace.openSession`) for choosing a different one explicitly.
 - Hidden in a plain browser (`html[data-windows-titlebar]` absent) and while the
   preload menubar is not mounted.
 
