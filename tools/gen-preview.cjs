@@ -74,9 +74,9 @@ const t = (key, params) => {
 const workspaces = {
   phase: "ready",
   items: [
-    { workspaceId: "w1", title: "working-project", sessionIds: ["s1"], path: "/home/user/projects/working-project" },
+    { workspaceId: "w1", title: "done-project", sessionIds: ["s1"], path: "/home/user/projects/done-project" },
     { workspaceId: "w2", title: "pending-project", sessionIds: ["s3"], path: "/home/user/projects/pending-project" },
-    { workspaceId: "w3", title: "running-project", sessionIds: ["s4"], path: "/tmp/running-project" },
+    { workspaceId: "w3", title: "running-project", sessionIds: ["s4"], path: "/home/user/projects/running-project" },
   ],
 };
 const sessions = {

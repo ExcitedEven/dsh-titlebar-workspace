@@ -1,62 +1,73 @@
 # dsh-titlebar-workspace
 
-A Desktop-only workspace chip in the **titlebar**, showing the current
-workspace. Click it to switch workspaces without opening the left sidebar.
+[中文](#中文) | [English](#english)
 
-- The chip lives in the `shell.overlay` slot; the dropdown and its flyout are
-  rendered through a `react-dom` portal into `document.body` with `z-index`
-  above every in-page layer. The overlay slot is a stacking context
-  (`z-index: 20`), so a child of it can never paint above the right sidebar
-  (whose own layers reach `z-index: 90`). A plugin cannot ask for a native
-  Electron menu: the desktop IPC only exposes its two fixed titlebar menus.
-- Rendered into the `shell.overlay` slot (frame-wide floating layer), then
-  positioned into the 40px titlebar strip: same 28px button height, 6px radius,
-  14px label, secondary label color and hover fill as the titlebar controls, so
-  it sits naturally in the titlebar row.
-- **Follows the layout**: the titlebar controls' `left` flips between 48px and
-  84px through `--dsh-windows-menu-start` when the sidebar collapses, without
-  changing their width. The chip re-measures their right edge (ResizeObserver,
-  window resize and a 200ms poll that updates only on a real change).
-- Attention order everywhere is **warning > done > ongoing > idle**. The chip
-  carries the roster-wide highest state, so a warning in another workspace still
-  reaches the titlebar (its tooltip names the owning workspace); each workspace
-  row carries its own aggregate; every conversation row carries its own dot
-  (the same `StateDot` states as the sidebar).
-- Blank conversations follow the sidebar: only the **current** blank one is
-  listed (as `新对话`, always first); other blanks stay hidden and never count
-  toward any status or toward the click target.
-- The menu is a single workspace column; hovering (or focusing) a row opens a
-  conversation flyout **anchored to that row**. It opens to the right of the
-  menu when there is room and flips to the left when the viewport is too narrow,
-  and its top is clamped inside the viewport.
-- The flyout's new-conversation row reuses `IconNewChatOutlineRegular` from the
-  shared `@deepseek-ai/dsh-client-ui-primitives` module — the same export the
-  sidebar's New Session button renders; nothing is copied into this package.
-- **Clicking a workspace opens its best conversation**: highest state first
-  (warning > done > ongoing > idle), newest conversation last-wins among equal
-  states, and a new conversation when the workspace is empty. The flyout keeps
-  `新建对话` (`uiWorkspace.startSession`, which reuses an existing blank like the
-  sidebar button) and the existing conversations (`uiWorkspace.openSession`) for
-  choosing a different one explicitly. Creating keeps the flyout open so the new
-  `新对话` row is visible immediately.
-- Hidden in a plain browser (`html[data-windows-titlebar]` absent) and while the
-  titlebar menu host is not mounted.
+## 中文
 
-## Install
+一个出现在 DeepSeek Harness **桌面端顶栏**的工作区切换器：不打开左侧栏，也能看到当前项目并直接切换。
+
+**功能**
+
+- **当前工作区常驻顶栏** —— 当前项目的名字一直在顶栏，点一下就能切换。
+- **状态一眼可见** —— 彩色圆点提示需要关注的事：黄色代表有工作区在等你，绿色代表有对话你还没看过，转圈代表正在运行。
+- **跨项目提醒** —— 顶栏显示所有工作区里最紧急的状态，别的项目有审批或提问时，不用切过去也能看到。
+- **工作区与对话两级菜单** —— 下拉先列出工作区；鼠标移上去展开该工作区的对话、各自的状态，以及“新建对话”。
+- **一次点击直达合适的对话** —— 点工作区会打开最该看的那条：等待优先，其次未读，再其次运行中，同状态取最新的；空工作区则新建一条。
+- **按需新建对话** —— 复用已有的空白对话，不会堆出一串空会话；新建后列表保持展开，能立刻看到结果。
+- **融入桌面** —— 与顶栏控件同款样式，跟随侧栏收放调整位置；点外部、按 Esc 或弹窗出现时收起。
+
+### 安装
+
+把本目录作为 profile bundle 安装：通过插件页，或使用
+`plugin_manager install_bundle`。移除 bundle 即可恢复原生顶栏。
+
+### 测试
 
 ```sh
-# through the plugin page / plugin_manager, pointing at this directory
+npm install
+npm test
+npm run preview
 ```
 
-The profile records it as `link:/home/user/projects/working-project/dsh-titlebar-workspace`.
-Removing the bundle restores the stock titlebar.
+## English
 
-## Test
+A workspace switcher for the DeepSeek Harness **desktop titlebar**: see the
+current project and switch without opening the left sidebar.
+
+**Features**
+
+- **The current workspace, always visible** — the active project's name sits in
+  the titlebar; click it to switch.
+- **Status at a glance** — colored dots show what needs attention: yellow for a
+  workspace waiting for you, green for a conversation you have not read yet, a
+  spinner while work is running.
+- **Alerts from every project** — the titlebar carries the most urgent state
+  across all workspaces, so a pending approval in another project is visible
+  without leaving the current one.
+- **Workspaces and their conversations** — the dropdown lists workspaces; hover
+  one to see its conversations, their individual statuses and a
+  "New conversation" action.
+- **One click to the right conversation** — clicking a workspace opens its most
+  relevant conversation: waiting first, then unread, then running, newest when
+  tied; an empty workspace starts a new conversation.
+- **New conversation on demand** — it reuses an existing blank conversation
+  instead of piling up empties, and the list stays open so the result is visible
+  immediately.
+- **Fits the desktop** — styled like the titlebar controls, follows the sidebar
+  collapsing, and closes on an outside click, Escape, or when a dialog opens.
+
+### Install
+
+Install this directory as a profile bundle through the plugin page, or with
+`plugin_manager install_bundle`. Removing the bundle restores the stock
+titlebar.
+
+### Test
 
 ```sh
-npm install   # react, react-dom, jsdom (dev only)
-npm test      # jsdom: placement, layout shift, two panes, dots, start/open calls
-npm run preview   # writes titlebar-preview.html for a visual check
+npm install
+npm test
+npm run preview
 ```
 
 ---

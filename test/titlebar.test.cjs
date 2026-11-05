@@ -135,10 +135,10 @@ const workspaces = {
   phase: "ready",
   items: [
     { workspaceId: "w1", title: "working-project", sessionIds: ["s1", "s2", "s5", "s8", "s9"], path: "/home/user/projects/working-project" },
-    { workspaceId: "w2", title: "pending-project", sessionIds: ["s3"], path: "/tmp/pending-project" },
-    { workspaceId: "w3", title: "running-project", sessionIds: ["s4"], path: "/tmp/running-project" },
-    { workspaceId: "w4", title: "tie-project", sessionIds: ["s6", "s7"], path: "/tmp/tie-project" },
-    { workspaceId: "w5", title: "empty-project", sessionIds: ["s10"], path: "/tmp/empty-project" },
+    { workspaceId: "w2", title: "pending-project", sessionIds: ["s3"], path: "/home/user/projects/pending-project" },
+    { workspaceId: "w3", title: "running-project", sessionIds: ["s4"], path: "/home/user/projects/running-project" },
+    { workspaceId: "w4", title: "tie-project", sessionIds: ["s6", "s7"], path: "/home/user/projects/tie-project" },
+    { workspaceId: "w5", title: "empty-project", sessionIds: ["s10"], path: "/home/user/projects/empty-project" },
   ],
 };
 const sessions = {
@@ -196,7 +196,7 @@ const dots = (row) => {
 
   const chip = container.querySelector(".tbw-button");
   if (chip === null) throw new Error("chip button did not render");
-  if (chip.textContent !== "DSH") throw new Error(`unexpected chip label: ${chip.textContent}`);
+  if (chip.textContent !== "working-project") throw new Error(`unexpected chip label: ${chip.textContent}`);
   const rootEl = container.querySelector(".tbw-root");
   if (rootEl.style.getPropertyValue("--tbw-left") !== "124px") {
     throw new Error(`unexpected placement: ${rootEl.style.getPropertyValue("--tbw-left")}`);
