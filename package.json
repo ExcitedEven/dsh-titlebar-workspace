@@ -13,6 +13,7 @@
   },
   "files": [
     "lib",
+    "src",
     "cordis.patch.yml",
     "README.md",
     "LICENSE"
@@ -42,12 +43,16 @@
     }
   },
   "scripts": {
-    "test": "node test/titlebar.test.cjs",
-    "preview": "node tools/gen-preview.cjs"
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node test/titlebar.test.cjs",
+    "preview": "npm run build && node tools/gen-preview.cjs"
   },
   "devDependencies": {
     "jsdom": "^26.0.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "typescript": "^5.7.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0"
   }
 }

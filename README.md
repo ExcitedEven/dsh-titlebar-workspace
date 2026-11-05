@@ -25,6 +25,7 @@
 
 ```sh
 npm install
+npm run build     # compile src/ to lib/
 npm test
 npm run preview
 ```
@@ -66,6 +67,7 @@ titlebar.
 
 ```sh
 npm install
+npm run build     # compile src/ to lib/
 npm test
 npm run preview
 ```
