@@ -1,23 +1,21 @@
 # dsh-titlebar-workspace
 
-A Desktop-only workspace chip in the **caption titlebar**, sitting right after
-the preload's 应用 / 编辑 menu and showing the current workspace. Click it to
-switch workspaces without opening the left sidebar.
+A Desktop-only workspace chip in the **titlebar**, showing the current
+workspace. Click it to switch workspaces without opening the left sidebar.
 
 - The chip lives in the `shell.overlay` slot; the dropdown and its flyout are
   rendered through a `react-dom` portal into `document.body` with `z-index`
   above every in-page layer. The overlay slot is a stacking context
   (`z-index: 20`), so a child of it can never paint above the right sidebar
   (whose own layers reach `z-index: 90`). A plugin cannot ask for a native
-  Electron menu: the desktop IPC only accepts the caption names `application`
-  and `edit`.
+  Electron menu: the desktop IPC only exposes its two fixed titlebar menus.
 - Rendered into the `shell.overlay` slot (frame-wide floating layer), then
   positioned into the 40px titlebar strip: same 28px button height, 6px radius,
-  14px label, secondary label color and hover fill as the caption menu, so it
-  reads as one group with 应用 / 编辑.
-- **Follows the layout**: the caption menubar's `left` flips between 48px and
+  14px label, secondary label color and hover fill as the titlebar controls, so
+  it sits naturally in the titlebar row.
+- **Follows the layout**: the titlebar controls' `left` flips between 48px and
   84px through `--dsh-windows-menu-start` when the sidebar collapses, without
-  changing its width. The chip re-measures the bar's right edge (ResizeObserver,
+  changing their width. The chip re-measures their right edge (ResizeObserver,
   window resize and a 200ms poll that updates only on a real change).
 - Attention order everywhere is **warning > done > ongoing > idle**. The chip
   carries the roster-wide highest state, so a warning in another workspace still
@@ -42,7 +40,7 @@ switch workspaces without opening the left sidebar.
   choosing a different one explicitly. Creating keeps the flyout open so the new
   `新对话` row is visible immediately.
 - Hidden in a plain browser (`html[data-windows-titlebar]` absent) and while the
-  preload menubar is not mounted.
+  titlebar menu host is not mounted.
 
 ## Install
 

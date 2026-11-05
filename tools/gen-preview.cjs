@@ -1,5 +1,5 @@
 // Renders the chip in jsdom, opens its menu, and writes a static preview page
-// with the Desktop caption bar (应用 / 编辑) for a visual check.
+// with the Desktop titlebar for a visual check.
 
 const fs = require("node:fs");
 const path = require("node:path");

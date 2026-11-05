@@ -1,7 +1,7 @@
 {
   "name": "dsh-titlebar-workspace",
   "version": "0.1.0",
-  "description": "Desktop titlebar workspace chip: shows the current workspace next to the App/Edit caption menu and switches it without opening the sidebar.",
+  "description": "Desktop titlebar workspace chip: shows the current workspace in the titlebar and switches it without opening the left sidebar.",
   "license": "MIT",
   "type": "module",
   "main": "lib/index.js",
