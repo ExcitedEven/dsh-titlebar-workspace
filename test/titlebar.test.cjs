@@ -1,6 +1,7 @@
 // DOM integration smoke test for dsh-titlebar-workspace: mounts the chip in
-// jsdom the way the app would and checks the measured placement, the two-pane
-// menu (workspaces + conversations), per-conversation dots and the two actions.
+// jsdom the way the app would (inside the preload's shadow menubar) and checks
+// the two-pane menu (workspaces + conversations), per-conversation dots and the
+// two actions.
 
 const { JSDOM } = require("jsdom");
 const React = require("react");
@@ -23,6 +24,11 @@ global.MutationObserver = window.MutationObserver;
 // jsdom has no ResizeObserver: the plugin falls back to polling + resize.
 
 const host = window.document.getElementById("menu-host");
+// The desktop preload puts the menubar inside the host's shadow root.
+const shadow = host.attachShadow({ mode: "open" });
+const menubar = window.document.createElement("div");
+menubar.setAttribute("role", "menubar");
+shadow.appendChild(menubar);
 let hostRight = 120;
 const rect = (left, top, width, height) => ({
   left,
@@ -194,15 +200,19 @@ const dots = (row) => {
 (async () => {
   await wait(90);
 
-  const chip = container.querySelector(".tbw-button");
+  const chip = shadow.querySelector(".tbw-button");
   if (chip === null) throw new Error("chip button did not render");
   if (chip.textContent !== "working-project") throw new Error(`unexpected chip label: ${chip.textContent}`);
-  const rootEl = container.querySelector(".tbw-root");
-  if (rootEl.style.getPropertyValue("--tbw-left") !== "124px") {
-    throw new Error(`unexpected placement: ${rootEl.style.getPropertyValue("--tbw-left")}`);
-  }
+  const rootEl = shadow.querySelector(".tbw-root");
+  if (rootEl === null) throw new Error("chip root did not render");
+  if (!menubar.contains(rootEl)) throw new Error("chip is not inside the shadow menubar");
   // The chip reports the roster-wide highest state (a warning in another workspace).
   if (dots(chip) !== "warning") throw new Error(`chip dot: ${dots(chip)}`);
+  // ...and it must draw it inline: the shadow root has no app stylesheet.
+  const chipDot = chip.querySelector("[data-state-dot]");
+  if (chipDot === null || !/background/.test(chipDot.getAttribute("style") || "")) {
+    throw new Error("chip dot must be inline-styled");
+  }
 
   chip.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
   await wait(50);
@@ -282,12 +292,11 @@ const dots = (row) => {
   await wait(30);
   if (calls.join(",") !== "new:w2,open:s3,open:s1,open:s7,new:w5") throw new Error(`blank workspace: ${calls.join(",")}`);
 
-  // Placement follows the menubar when the sidebar collapses (left flips to 84px).
+  // The chip is a child of the shell's own menubar row, so the row moves it;
+  // no measurement is involved.
   hostRight = 156;
   await wait(260);
-  if (container.querySelector(".tbw-root").style.getPropertyValue("--tbw-left") !== "160px") {
-    throw new Error(`placement did not follow: ${container.querySelector(".tbw-root").style.getPropertyValue("--tbw-left")}`);
-  }
+  if (!menubar.contains(shadow.querySelector(".tbw-root"))) throw new Error("chip left the menubar");
 
   // Narrow viewport flips the flyout to the left of the menu.
   chip.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
@@ -315,7 +324,7 @@ const dots = (row) => {
   console.log("chip label:", chip.textContent, "dot:", dots(chip));
   console.log("workspace dots:", rowStates.join(","));
   console.log("calls:", calls.join(","));
-  console.log("placement after layout shift:", container.querySelector(".tbw-root").style.getPropertyValue("--tbw-left"));
+  console.log("chip inside shadow menubar:", menubar.contains(shadow.querySelector(".tbw-root")));
   console.log("all DOM assertions passed");
   process.exit(0);
 })().catch((error) => {

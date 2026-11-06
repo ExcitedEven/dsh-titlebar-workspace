@@ -20,12 +20,18 @@ global.Element = window.Element;
 global.MutationObserver = window.MutationObserver;
 
 const rect = (left, top, width, height) => ({ left, top, right: left + width, bottom: top + height, width, height, x: left, y: top, toJSON() {} });
+const menuHost = window.document.getElementById("menu-host");
+const shadow = menuHost.attachShadow({ mode: "open" });
+const menubar = window.document.createElement("div");
+menubar.setAttribute("role", "menubar");
+shadow.appendChild(menubar);
 window.Element.prototype.getBoundingClientRect = function getBoundingClientRect() {
   if (this.id === "menu-host") return rect(48, 0, 98, 40);
   const className = typeof this.className === "string" ? this.className : "";
   if (className.indexOf("tbw-menu") >= 0) return rect(Number.parseFloat(this.style.left) || 0, 40, 216, 150);
   if (className.indexOf("tbw-sub") >= 0) return rect(Number.parseFloat(this.style.left) || 0, Number.parseFloat(this.style.top) || 0, 300, 190);
   if (className.indexOf("tbw-item") >= 0) return rect(150, 74, 200, 32);
+  if (className.indexOf("tbw-button") >= 0) return rect(150, 0, 180, 40);
   return rect(0, 0, 0, 0);
 };
 window.__ModuleLoader__ = { load: (definition) => loaded.push(definition) };
@@ -120,7 +126,7 @@ const wait = (ms = 40) => new Promise((resolve) => setTimeout(resolve, ms));
 
 (async () => {
   await wait(80);
-  window.document.querySelector(".tbw-button").dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+  shadow.querySelector(".tbw-button").dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
   await wait(60);
   const rows = [...window.document.querySelectorAll(".tbw-menu [role=menuitem]")];
   if (rows.length > 1) rows[1].dispatchEvent(new window.MouseEvent("mouseover", { bubbles: true, relatedTarget: window.document.body }));
@@ -130,7 +136,9 @@ const wait = (ms = 40) => new Promise((resolve) => setTimeout(resolve, ms));
     .exec(fs.readFileSync(path.join(__dirname, "..", "lib", "client.js"), "utf8"))[1]
     .replace(/^\s*\/\/.*$/gm, "");
   const pluginCss = [...css.matchAll(/"((?:[^"\\]|\\.)*)"/g)].map((match) => match[1]).join("");
-  const chipHtml = window.document.getElementById("root").innerHTML;
+  const chipRoot = shadow.querySelector(".tbw-root");
+  if (chipRoot === null) throw new Error("chip did not render");
+  const chipHtml = chipRoot.outerHTML;
   const panelsHtml = [...window.document.body.children]
     .filter((element) => element.classList && (element.classList.contains("tbw-menu") || element.classList.contains("tbw-sub")))
     .map((element) => element.outerHTML)
@@ -154,7 +162,7 @@ const wait = (ms = 40) => new Promise((resolve) => setTimeout(resolve, ms));
   .fake{background:#0f1115;margin:12px;border-radius:12px;height:calc(100% - 24px);opacity:.55}
   ${pluginCss}
 </style>
-<div class="caption"><div role="menubar"><button type="button" role="menuitem" aria-haspopup="menu" aria-expanded="false">应用</button><button type="button" role="menuitem" aria-haspopup="menu" aria-expanded="false">编辑</button></div></div>
+<div class="caption"><div role="menubar"><button type="button" role="menuitem" aria-haspopup="menu" aria-expanded="false">应用</button><button type="button" role="menuitem" aria-haspopup="menu" aria-expanded="false">编辑</button>${chipHtml}</div></div>
 <div class="frame"><div class="fake"></div></div>
 ${chipHtml}
 ${panelsHtml}

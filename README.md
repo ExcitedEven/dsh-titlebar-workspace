@@ -16,9 +16,7 @@
 
 ## 安装
 
-把本目录作为 profile bundle 安装：通过插件页，或让 `plugin_manager` 指向这个目录。装完如果顶栏没有出现，刷新一次页面（`Ctrl+R`）或重启应用。
-
-发布到 GitHub 之后也可以直接安装：
+把本目录作为 profile bundle 安装：通过插件页，或让 `plugin_manager` 指向这个目录。装完如果顶栏没有出现，重启应用。
 
 ```sh
 dsh plugin --profile desktop add github:ExcitedEven/dsh-titlebar-workspace
@@ -42,7 +40,7 @@ dsh plugin --profile desktop add github:ExcitedEven/dsh-titlebar-workspace
 
 ## 为什么按钮在顶栏
 
-顶栏的原生菜单在 Electron 主进程里构造，没有留给插件的扩展点。本插件改为把控件放进顶栏那一行：位置对齐顶栏控件，尺寸、字号、悬停色也与它们一致，所以看起来是顶栏的一部分。找不到顶栏菜单宿主时插件什么都不渲染，也不影响其它插件。
+顶栏的原生菜单在 Electron 主进程里构造，没有留给插件的扩展点。本插件把控件直接追加进顶栏菜单行（preload 在页面里建的那个菜单行），尺寸、字号、悬停色与行内控件一致，所以看起来是顶栏的一部分；侧栏收放时由这一行带着移动，不需要测量或轮询。找不到菜单行时插件什么都不渲染，也不影响其它插件。
 
 下拉菜单与对话浮层直接挂到页面的最上层，不会被右侧栏盖住；出现真正的弹窗时会自动收起。
 
@@ -51,7 +49,7 @@ dsh plugin --profile desktop add github:ExcitedEven/dsh-titlebar-workspace
 - **仅桌面端**：普通浏览器里不渲染。
 - 需要 `dsh >= 0.2.0`（`dsh.engines.dsh`）。
 - 运行时零依赖；源码是 TypeScript（`src/`），`lib/` 是 `npm run build` 的产物（已提交，`link:` 安装无需构建）。
-- 侧栏收放时顶栏控件会整体移动，插件用 200ms 轮询跟随（只读一次位置，开销很小）。
+- 控件直接挂进顶栏菜单行，侧栏收放时随该行移动，不做位置轮询。
 - 重启应用会重新加载插件；会话与文件都在磁盘上，不受影响。
 
 ## 卸载
@@ -60,15 +58,15 @@ dsh plugin --profile desktop add github:ExcitedEven/dsh-titlebar-workspace
 
 ## 文件结构
 
-| 文件 | 作用 |
-| --- | --- |
-| `src/client.ts` | 浏览器端：顶栏控件、下拉与浮层、状态点、跳转 |
-| `src/index.ts` | Host 半区：只需一个 Loader 行，不注册服务或工具 |
-| `lib/` | `tsc` 构建产物（`client.js`、`index.js`） |
-| `cordis.patch.yml` | bundle patch，插入一行插件 |
-| `test/` | jsdom 测试：定位、布局变化、状态点、空白会话、点击目标 |
-| `tools/` | 预览生成器（生成 README 里的示意图） |
-| `assets/` | README 截图 |
+| 文件               | 作用                                                   |
+| ------------------ | ------------------------------------------------------ |
+| `src/client.ts`    | 浏览器端：顶栏控件、下拉与浮层、状态点、跳转           |
+| `src/index.ts`     | Host 半区：只需一个 Loader 行，不注册服务或工具        |
+| `lib/`             | `tsc` 构建产物（`client.js`、`index.js`）              |
+| `cordis.patch.yml` | bundle patch，插入一行插件                             |
+| `test/`            | jsdom 测试：定位、布局变化、状态点、空白会话、点击目标 |
+| `tools/`           | 预览生成器（生成 README 里的示意图）                   |
+| `assets/`          | README 截图                                            |
 
 ## 开发
 
@@ -79,18 +77,6 @@ npm test
 npm run preview   # 生成 tools/titlebar-preview.html
 ```
 
-## 版本与发布
-
-版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)：破坏性变更升 MAJOR，新功能升 MINOR，修复升 PATCH；每次发布先更新 [CHANGELOG.md](CHANGELOG.md)。
-
-```sh
-npm version patch   # 或 minor / major；改 package.json 并打 vX.Y.Z tag
-git push --follow-tags
-```
-
-之后在插件市场或通过 `npm publish` 发布。
-
 ## License
 
 MIT
-

@@ -161,7 +161,7 @@ loader.load({
     // padding, 6px radius, 14px label text, inside a 40px titlebar strip.
     // Keeping the same numbers is what makes the chip sit in the titlebar row.
     const CSS = [
-      ".tbw-root{position:fixed;top:0;left:var(--tbw-left,96px);z-index:30;-webkit-app-region:no-drag;align-items:center;height:var(--dsh-windows-titlebar-height,40px);display:flex;pointer-events:none}",
+      ".tbw-root{margin-left:4px;-webkit-app-region:no-drag;align-items:center;display:flex;pointer-events:none}",
       ".tbw-button{pointer-events:auto;border:0;border-radius:6px;background:0 0;height:28px;max-width:260px;padding:0 10px;color:var(--dsw-alias-label-secondary);font-family:var(--dsw-font-family);font-size:14px;line-height:20px;cursor:default;align-items:center;gap:6px;display:inline-flex}",
       ".tbw-button:hover,.tbw-button[aria-expanded=true]{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}",
       ".tbw-button:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:-2px}",
@@ -185,6 +185,8 @@ loader.load({
       ".tbw-plus{flex:none;justify-content:center;align-items:center;width:16px;height:16px;color:currentColor;display:inline-flex}",
       ".tbw-empty{color:var(--dsw-alias-label-tertiary);font-size:13px;line-height:20px;padding:8px}",
       ".tbw-error{pointer-events:auto;color:var(--dsw-alias-state-error-primary);font-size:13px;padding-left:4px}",
+      ".tbw-spinner{flex:none;display:inline-flex;animation:tbw-spin .8s linear infinite}",
+      "@keyframes tbw-spin{to{transform:rotate(360deg)}}",
     ].join("");
 
     function ensureStyles() {
@@ -307,6 +309,46 @@ loader.load({
         });
     }
 
+    /**
+     * The chip lives in the preload's shadow root, which does not carry the app
+     * stylesheet: the primitives' class-based StateDot would lose its colour and
+     * animation there. Draw the same indicator inline (CSS variables still
+     * inherit through the shadow boundary).
+     */
+    function ChipStatus({ state, size }: { state: SessionState; size: number }) {
+      if (state === "ongoing") {
+        return h(
+          "span",
+          {
+            className: "tbw-spinner",
+            "data-state-dot": state,
+            "aria-hidden": true,
+            style: {
+              color: "var(--dsw-alias-label-tertiary, #9aa0a6)",
+              width: size + "px",
+              height: size + "px",
+            },
+          },
+          h(
+            "svg",
+            { width: size, height: size, viewBox: "0 0 24 24" },
+            h("circle", { cx: 12, cy: 12, r: 9.5, fill: "none", stroke: "currentColor", strokeWidth: 2, opacity: 0.25 }),
+            h("path", { d: "M12 2.5a9.5 9.5 0 0 1 0 19", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round", strokeDasharray: "12 150" }),
+          ),
+        );
+      }
+      const color = state === "warning"
+        ? "var(--dsw-alias-state-warn-primary, #f5c518)"
+        : state === "done"
+          ? "var(--dsw-alias-state-success-primary, #3ecf8e)"
+          : "var(--dsw-alias-state-idle-primary, #8b9095)";
+      return h("span", {
+        "data-state-dot": state,
+        "aria-hidden": true,
+        style: { display: "inline-block", width: size + "px", height: size + "px", borderRadius: "50%", background: color },
+      });
+    }
+
     /** The spinner ring reads better at the cell's full width than a tiny dot size. */
     function dotSize(state: SessionState): number {
       return state === "ongoing" ? 10 : 8;
@@ -325,52 +367,85 @@ loader.load({
       return t("session.untitled");
     }
 
+    /** The preload's titlebar menubar lives inside an open shadow root. */
+    function titlebarBar(): HTMLElement | null {
+      const host = document.querySelector<HTMLElement>("[data-windows-menu]");
+      const bar = host?.shadowRoot?.querySelector<HTMLElement>('[role="menubar"]') ?? null;
+      return bar !== null && bar.isConnected ? bar : null;
+    }
+
+    function isShadowRoot(node: Node): node is ShadowRoot {
+      return node.nodeType === 11 && "host" in node;
+    }
+
+    function ensureShadowStyles(root: ShadowRoot): void {
+      const existing = root.querySelector<HTMLStyleElement>("style[data-tbw-shadow]");
+      if (existing !== null) {
+        if (existing.textContent !== CSS) existing.textContent = CSS;
+        return;
+      }
+      const style = document.createElement("style");
+      style.setAttribute("data-tbw-shadow", "");
+      style.textContent = CSS;
+      root.appendChild(style);
+    }
+
     /**
-     * Track the right edge of the titlebar's own controls.
+     * Mount the chip as a real child of the titlebar menubar.
      *
-     * Their `left` is a CSS variable the sidebar flips when it collapses
-     * (`--dsh-windows-menu-start`), so the width does not change when the layout
-     * shifts — a ResizeObserver alone misses that. Poll the rect at a low rate
-     * and update only on a real change; ResizeObserver and window resize make
-     * the common cases immediate.
+     * The shell's own flex row moves when the sidebar collapses, so the chip
+     * follows without measuring anything: React renders into a host element that
+     * lives inside the preload's shadow root. Retry until the menubar exists;
+     * the preload creates it after the page starts.
      */
-    function useMenubarRight(): number | null {
-      const [right, setRight] = React.useState<number | null>(null);
+    function useChipHost(): HTMLElement | null {
+      const [host, setHost] = React.useState<HTMLElement | null>(null);
       React.useEffect(() => {
-        let resize: ResizeObserver | null = null;
+        if (!document.documentElement.hasAttribute("data-windows-titlebar")) return undefined;
+        let element: HTMLElement | null = null;
         let timer = 0;
-        const measure = () => {
-          const desktop = document.documentElement.hasAttribute("data-windows-titlebar");
-          const host = desktop ? document.querySelector("[data-windows-menu]") : null;
-          if (host === null) {
-            setRight((current) => (current === null ? current : null));
-            return;
+        let observer: MutationObserver | null = null;
+        const startedAt = Date.now();
+        const attach = (): void => {
+          const bar = titlebarBar();
+          if (bar === null) return;
+          if (element === null) {
+            element = document.createElement("span");
+            element.className = "tbw-host";
+            element.setAttribute("data-tbw-host", "");
+            element.style.display = "contents";
+            setHost(element);
           }
-          const rect = host.getBoundingClientRect();
-          if (rect.width === 0) {
-            setRight((current) => (current === null ? current : null));
-            return;
-          }
-          const next = Math.round(rect.right + 4);
-          setRight((current) => (current === next ? current : next));
-          if (resize === null && typeof ResizeObserver === "function") {
-            resize = new ResizeObserver(measure);
-            resize.observe(host);
+          if (element.parentElement !== bar) bar.appendChild(element);
+          const root = bar.getRootNode();
+          if (isShadowRoot(root)) ensureShadowStyles(root);
+          if (observer === null) {
+            observer = new MutationObserver(() => {
+              if (element === null) return;
+              if (element.parentElement !== bar) bar.appendChild(element);
+              const live = bar.getRootNode();
+              if (isShadowRoot(live)) ensureShadowStyles(live);
+            });
+            observer.observe(bar, { childList: true });
           }
         };
-        measure();
-        timer = window.setInterval(measure, 200);
-        window.addEventListener("resize", measure);
-        const observer = new MutationObserver(measure);
-        observer.observe(document.documentElement, { attributes: true, attributeFilter: ["lang", "data-windows-titlebar"] });
+        const wait = (): void => {
+          if (titlebarBar() !== null) {
+            attach();
+            return;
+          }
+          if (Date.now() - startedAt > 20000) return;
+          timer = window.setTimeout(wait, 250);
+        };
+        wait();
         return () => {
-          if (timer !== 0) window.clearInterval(timer);
-          if (resize !== null) resize.disconnect();
-          window.removeEventListener("resize", measure);
-          observer.disconnect();
+          if (timer !== 0) window.clearTimeout(timer);
+          observer?.disconnect();
+          element?.remove();
+          setHost(null);
         };
       }, []);
-      return right;
+      return host;
     }
 
     /**
@@ -384,7 +459,7 @@ loader.load({
       const workspaceSnapshot = useWorkspaces((state) => state);
       const sessionSnapshot = useSessions((state) => state);
       const statuses = useSessionStatus((state) => state);
-      const left = useMenubarRight();
+      const host = useChipHost();
       interface FlyoutPosition {
         left: number;
         top: number;
@@ -395,6 +470,7 @@ loader.load({
       const [anchorTop, setAnchorTop] = React.useState<number | null>(null);
       const [subPos, setSubPos] = React.useState<FlyoutPosition | null>(null);
       const [viewportWidth, setViewportWidth] = React.useState<number>(() => window.innerWidth);
+      const [menuLeft, setMenuLeft] = React.useState<number>(96);
       const [error, setError] = React.useState<string | null>(null);
       const rootRef = React.useRef<HTMLDivElement>(null);
       const menuRef = React.useRef<HTMLDivElement>(null);
@@ -450,6 +526,15 @@ loader.load({
         window.addEventListener("resize", onResize);
         return () => window.removeEventListener("resize", onResize);
       }, []);
+
+      // The menu hangs under the chip; read its rect when it opens.
+      React.useLayoutEffect(() => {
+        if (!open) return;
+        const button = buttonRef.current;
+        if (button === null) return;
+        const rect = button.getBoundingClientRect();
+        setMenuLeft(Math.max(8, Math.min(Math.round(rect.left), viewportWidth - 232)));
+      }, [open, viewportWidth]);
 
       // Place the conversation flyout beside the menu: right when it fits,
       // otherwise left, vertically aligned to the hovered workspace row and
@@ -511,10 +596,12 @@ loader.load({
       React.useEffect(() => {
         if (!open) return undefined;
         const onPointerDown = (event: PointerEvent) => {
-          const target = event.target instanceof Node ? event.target : null;
-          if (rootRef.current !== null && rootRef.current.contains(target)) return;
-          if (menuRef.current !== null && menuRef.current.contains(target)) return;
-          if (subRef.current !== null && subRef.current.contains(target)) return;
+          // Events from the chip's shadow root are retargeted; composedPath
+          // still names the real nodes.
+          const path = event.composedPath();
+          if (rootRef.current !== null && path.includes(rootRef.current)) return;
+          if (menuRef.current !== null && path.includes(menuRef.current)) return;
+          if (subRef.current !== null && path.includes(subRef.current)) return;
           setOpen(false);
         };
         // The panels sit above every in-page layer, so a dialog that opens
@@ -588,12 +675,11 @@ loader.load({
         if (next !== undefined) next.focus();
       };
 
-      if (left === null) return null;
-      const menuLeft = Math.max(8, Math.min(left, viewportWidth - 232));
+      if (host === null) return null;
 
-      const chipNode = h(
+      const chipNode = reactDom.createPortal(h(
           "div",
-          { className: "tbw-root", ref: rootRef, style: { "--tbw-left": left + "px" } },
+          { className: "tbw-root", ref: rootRef },
           h(
             "button",
             {
@@ -607,12 +693,12 @@ loader.load({
               onMouseDown: (event) => event.preventDefault(),
               onClick: () => (open ? setOpen(false) : openMenu()),
             },
-            global.state !== "idle" ? h("span", { className: "tbw-dot", "aria-hidden": true }, h(StateDot, { state: global.state, size: dotSize(global.state) })) : null,
+            global.state !== "idle" ? h("span", { className: "tbw-dot", "aria-hidden": true }, h(ChipStatus, { state: global.state, size: dotSize(global.state) })) : null,
             h("span", { className: "tbw-name" }, label),
             h("span", { className: "tbw-chevron", "aria-hidden": true }, h(IconChevronDownRegular, { size: 12 })),
           ),
           error !== null ? h("span", { className: "tbw-error", role: "status", title: error }, "!") : null,
-      );
+      ), host);
       const menuNode = open
           ? reactDom.createPortal(h(
               "div",

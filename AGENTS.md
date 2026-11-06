@@ -9,8 +9,8 @@ directory as `dsh-titlebar-workspace`; edits hot-reload into the running app.
   `jsdom`); the plugin has no runtime dependencies.
 - `npm run build` — `tsc` compiles `src/` to `lib/` (committed so a linked
   install works without a build).
-- `npm test` — builds, then jsdom: placement, layout shift, dots, blank
-  handling, click targets.
+- `npm test` — builds, then jsdom: shadow-menubar mounting, menu/flyout,
+  dots, blank handling, click targets.
 - `npm run preview` — builds, then writes `tools/titlebar-preview.html`.
 
 ## Layout
@@ -39,6 +39,13 @@ directory as `dsh-titlebar-workspace`; edits hot-reload into the running app.
   app keeps a hidden one mounted; a naive query closes the menu on open.
 - Blank sessions: only the current one is listed (as `新对话`); blanks never
   count toward a status or a click target.
+- The chip is appended into the preload's shadow menubar
+  (`[data-windows-menu]` → shadowRoot → `[role="menubar"]`) and its CSS is
+  injected into that shadow root, so the row moves it with the sidebar. Do not
+  go back to measuring the menubar rect / polling.
+- The chip's status indicator must be rendered inline (`ChipStatus`), never with
+  the primitives' class-based `StateDot`: the preload's shadow root has no app
+  stylesheet, so class-based colours/animation are lost there.
 - Titlebar metrics mirror the Desktop titlebar controls (28px button, 6px radius,
-  14px label). `--dsh-windows-menu-start` flips 48↔84px with the sidebar.
+  14px label).
 

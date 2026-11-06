@@ -16,9 +16,7 @@
 
 ## Install
 
-Install this directory as a profile bundle: through the plugin page, or by pointing `plugin_manager` at it. If the titlebar does not show it, refresh the page (`Ctrl+R`) or restart the app.
-
-After publishing to GitHub:
+Install this directory as a profile bundle: through the plugin page, or by pointing `plugin_manager` at it. If the titlebar does not show it, restart the app.
 
 ```sh
 dsh plugin --profile desktop add github:ExcitedEven/dsh-titlebar-workspace
@@ -42,7 +40,7 @@ dsh plugin --profile desktop add github:ExcitedEven/dsh-titlebar-workspace
 
 ## Why the button is in the titlebar
 
-The titlebar's native menu is built in the Electron main process and has no extension point for plugins. This plugin puts its control in the titlebar row instead: aligned with the titlebar controls and using their size, font and hover color, so it reads as part of the titlebar. When the titlebar menu host is missing, the plugin renders nothing and does not affect other plugins.
+The titlebar's native menu is built in the Electron main process and has no extension point for plugins. This plugin appends its control to the titlebar menu row instead: same size, font and hover color as the row's controls, so it reads as part of the titlebar, and the row moves it when the sidebar collapses — no measuring or polling. When that row is missing, the plugin renders nothing and does not affect other plugins.
 
 The dropdown and flyout are mounted at the top of the page, so the right sidebar cannot cover them; they close when a real dialog opens.
 
@@ -51,7 +49,7 @@ The dropdown and flyout are mounted at the top of the page, so the right sidebar
 - **Desktop only**: not rendered in a plain browser.
 - `dsh >= 0.2.0` (`dsh.engines.dsh`).
 - Zero runtime dependencies; source in TypeScript (`src/`), `lib/` is the `npm run build` output (committed, so a `link:` install needs no build).
-- A 200ms poll follows titlebar layout changes (one rect read; negligible).
+- The control lives in the titlebar menu row, which moves it with the sidebar; there is no layout polling.
 - Restarting the app reloads the plugin; sessions and files stay on disk.
 
 ## Uninstall
@@ -60,15 +58,15 @@ Settings → Plugins → `dsh-titlebar-workspace` → disable or uninstall; the 
 
 ## File structure
 
-| File | Purpose |
-| --- | --- |
-| `src/client.ts` | Browser side: titlebar control, dropdown and flyout, status dots, navigation |
-| `src/index.ts` | Host side: just a Loader row; no services or tools |
-| `lib/` | `tsc` build output (`client.js`, `index.js`) |
-| `cordis.patch.yml` | Bundle patch that inserts the entry |
-| `test/` | jsdom test: placement, layout shift, dots, blank sessions, click targets |
-| `tools/` | Preview generator (renders the README image) |
-| `assets/` | README screenshot |
+| File               | Purpose                                                       |
+| ------------------ | ------------------------------------------------------------- |
+| `src/client.ts`    | Browser side: titlebar control, dropdown and flyout, dots, navigation |
+| `src/index.ts`     | Host side: just a Loader row; no services or tools             |
+| `lib/`             | `tsc` build output (`client.js`, `index.js`)                   |
+| `cordis.patch.yml` | Bundle patch that inserts the entry                           |
+| `test/`            | jsdom test: placement, layout change, dots, blank sessions, click targets |
+| `tools/`           | Preview generator (renders the README image)                  |
+| `assets/`          | README screenshot                                             |
 
 ## Development
 
@@ -79,18 +77,6 @@ npm test
 npm run preview   # writes tools/titlebar-preview.html
 ```
 
-## Versioning
-
-The version follows [Semantic Versioning](https://semver.org/): MAJOR for breaking changes, MINOR for features, PATCH for fixes. Update [CHANGELOG.md](CHANGELOG.md) for every release.
-
-```sh
-npm version patch   # or minor / major; bumps package.json and tags vX.Y.Z
-git push --follow-tags
-```
-
-Then publish through the plugin market or `npm publish`.
-
 ## License
 
 MIT
-
