@@ -13,10 +13,12 @@
   },
   "files": [
     "lib",
+    "assets",
     "src",
     "cordis.patch.yml",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "README.en.md"
   ],
   "dsh": {
     "bundle": {

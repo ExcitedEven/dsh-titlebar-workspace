@@ -33,7 +33,17 @@ const loaded = [];
 const primitives = {
   IconChevronDownOutlineRegular: (props) => React.createElement("svg", { width: 12, height: 12, viewBox: "0 0 12 12", fill: "none" }, React.createElement("path", { d: "M3 4.5L6 7.5L9 4.5", stroke: "currentColor", "strokeWidth": "1.2", "strokeLinecap": "round", "strokeLinejoin": "round" })),
   IconNewChatOutlineRegular: (props) => React.createElement("svg", { width: props.size, height: props.size, viewBox: "0 0 16 16", fill: "none" }, React.createElement("rect", { x: "2.5", y: "3", width: "11", height: "10", rx: "2.5", stroke: "currentColor", strokeWidth: "1.2" }), React.createElement("path", { d: "M8 6v4M6 8h4", stroke: "currentColor", strokeWidth: "1.2", strokeLinecap: "round" })),
-  StateDot: ({ state, size }) => React.createElement("span", { style: { display: "inline-block", width: (size ?? 10) + "px", height: (size ?? 10) + "px", borderRadius: "50%", background: state === "warning" ? "#f5c518" : state === "done" ? "#3ecf8e" : "#4aa3ff" } }),
+  // Mirrors primitives' StateDot: "ongoing" is the gray spinner ring, the rest are dots.
+  StateDot: ({ state, size }) => {
+    const px = size ?? 10;
+    if (state === "ongoing") {
+      return React.createElement("span", { style: { display: "inline-flex", color: "var(--dsw-alias-label-tertiary)" } },
+        React.createElement("svg", { width: px, height: px, viewBox: "0 0 24 24", "aria-hidden": true },
+          React.createElement("circle", { cx: 12, cy: 12, r: 9.5, fill: "none", stroke: "currentColor", strokeWidth: 2, opacity: 0.25 }),
+          React.createElement("path", { d: "M12 2.5a9.5 9.5 0 0 1 0 19", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round", strokeDasharray: "12 150" })));
+    }
+    return React.createElement("span", { style: { display: "inline-block", width: px + "px", height: px + "px", borderRadius: "50%", background: state === "warning" ? "#f5c518" : "#3ecf8e" } });
+  },
 };
 require("../lib/client.js");
 const definition = loaded[0];

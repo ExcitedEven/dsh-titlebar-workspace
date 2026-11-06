@@ -307,6 +307,11 @@ loader.load({
         });
     }
 
+    /** The spinner ring reads better at the cell's full width than a tiny dot size. */
+    function dotSize(state: SessionState): number {
+      return state === "ongoing" ? 10 : 8;
+    }
+
     function statusLabel(state: SessionState, t: Translate): string {
       if (state === "warning") return t("status.warning");
       if (state === "ongoing") return t("status.ongoing");
@@ -602,7 +607,7 @@ loader.load({
               onMouseDown: (event) => event.preventDefault(),
               onClick: () => (open ? setOpen(false) : openMenu()),
             },
-            global.state !== "idle" ? h("span", { className: "tbw-dot", "aria-hidden": true }, h(StateDot, { state: global.state, size: 8 })) : null,
+            global.state !== "idle" ? h("span", { className: "tbw-dot", "aria-hidden": true }, h(StateDot, { state: global.state, size: dotSize(global.state) })) : null,
             h("span", { className: "tbw-name" }, label),
             h("span", { className: "tbw-chevron", "aria-hidden": true }, h(IconChevronDownRegular, { size: 12 })),
           ),
@@ -650,7 +655,7 @@ loader.load({
                         },
                       },
                       rowState !== "idle"
-                        ? h("span", { className: "tbw-dot", "aria-hidden": true }, h(StateDot, { state: rowState, size: 8 }))
+                        ? h("span", { className: "tbw-dot", "aria-hidden": true }, h(StateDot, { state: rowState, size: dotSize(rowState) }))
                         : h("span", { className: "tbw-dot", "aria-hidden": true }),
                       h("span", { className: "tbw-itemName" }, workspaceTitle(item, t)),
                       isCurrent ? h("span", { className: "tbw-check", "aria-hidden": true }, "\u2713") : null,
@@ -709,7 +714,7 @@ loader.load({
                         onClick: () => run(() => openSession(session.id)),
                       },
                       rowState !== "idle"
-                        ? h("span", { className: "tbw-dot", "aria-hidden": true }, h(StateDot, { state: rowState, size: 8 }))
+                        ? h("span", { className: "tbw-dot", "aria-hidden": true }, h(StateDot, { state: rowState, size: dotSize(rowState) }))
                         : h("span", { className: "tbw-dot", "aria-hidden": true }),
                       h("span", { className: "tbw-itemName" }, sessionTitle(session, t)),
                     );
