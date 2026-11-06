@@ -21,7 +21,7 @@ Install this directory as a profile bundle: through the plugin page, or by point
 After publishing to GitHub:
 
 ```sh
-dsh plugin --profile desktop add github:<owner>/dsh-titlebar-workspace
+dsh plugin --profile desktop add github:ExcitedEven/dsh-titlebar-workspace
 ```
 
 ## Usage
@@ -78,6 +78,17 @@ npm run build     # src/ → lib/
 npm test
 npm run preview   # writes tools/titlebar-preview.html
 ```
+
+## Versioning
+
+The version follows [Semantic Versioning](https://semver.org/): MAJOR for breaking changes, MINOR for features, PATCH for fixes. Update [CHANGELOG.md](CHANGELOG.md) for every release.
+
+```sh
+npm version patch   # or minor / major; bumps package.json and tags vX.Y.Z
+git push --follow-tags
+```
+
+Then publish through the plugin market or `npm publish`.
 
 ## License
 

@@ -22,6 +22,14 @@ directory as `dsh-titlebar-workspace`; edits hot-reload into the running app.
 - Edit `src/`, never `lib/`: `lib/` is build output.
 - `test/`, `tools/` — jsdom test and preview generator (not shipped).
 
+## Release
+
+- Version follows SemVer. Keep `CHANGELOG.md` current, then run
+  `npm version patch|minor|major` (bumps `package.json`, commits and creates
+  the `vX.Y.Z` tag) and publish.
+- Compatibility lives in `engines.dsh` and `dsh.engines.dsh`; keep them in sync
+  when the minimum DSH version changes.
+
 ## Pitfalls
 
 - The dropdown and flyout must stay portaled to `document.body`: the

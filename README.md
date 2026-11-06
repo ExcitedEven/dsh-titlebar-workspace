@@ -21,7 +21,7 @@
 发布到 GitHub 之后也可以直接安装：
 
 ```sh
-dsh plugin --profile desktop add github:<owner>/dsh-titlebar-workspace
+dsh plugin --profile desktop add github:ExcitedEven/dsh-titlebar-workspace
 ```
 
 ## 用法
@@ -78,6 +78,17 @@ npm run build     # src/ → lib/
 npm test
 npm run preview   # 生成 tools/titlebar-preview.html
 ```
+
+## 版本与发布
+
+版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)：破坏性变更升 MAJOR，新功能升 MINOR，修复升 PATCH；每次发布先更新 [CHANGELOG.md](CHANGELOG.md)。
+
+```sh
+npm version patch   # 或 minor / major；改 package.json 并打 vX.Y.Z tag
+git push --follow-tags
+```
+
+之后在插件市场或通过 `npm publish` 发布。
 
 ## License
 

@@ -32,6 +32,10 @@
         "@deepseek-ai/dsh-client-ui-workspace",
         "@deepseek-ai/dsh-client-locale"
       ]
+    },
+    "manifestVersion": 1,
+    "engines": {
+      "dsh": ">=0.2.0"
     }
   },
   "peerDependencies": {
@@ -56,5 +60,29 @@
     "typescript": "^5.7.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0"
-  }
+  },
+  "engines": {
+    "dsh": ">=0.2.0"
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "cordis-plugin",
+    "titlebar",
+    "workspace",
+    "desktop"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ExcitedEven/dsh-titlebar-workspace.git"
+  },
+  "homepage": "https://github.com/ExcitedEven/dsh-titlebar-workspace#readme",
+  "bugs": {
+    "url": "https://github.com/ExcitedEven/dsh-titlebar-workspace/issues"
+  },
+  "author": "ExcitedEven"
 }
