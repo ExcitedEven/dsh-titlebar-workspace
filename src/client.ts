@@ -51,7 +51,6 @@ interface SessionSnapshot {
 }
 
 interface Primitives {
-  IconChevronDownOutlineRegular: React.ComponentType<{ size?: number; className?: string }>;
   IconNewChatOutlineRegular?: React.ComponentType<{ size?: number }>;
   StateDot: React.ComponentType<{ state: SessionState; size?: number }>;
 }
@@ -115,7 +114,6 @@ loader.load({
     const reactDom = require("react-dom") as typeof import("react-dom");
     const h = React.createElement;
     const primitives = require("@deepseek-ai/dsh-client-ui-primitives") as Primitives;
-    const IconChevronDownRegular = primitives.IconChevronDownOutlineRegular;
     const IconNewChatRegular = primitives.IconNewChatOutlineRegular;
     const StateDot = primitives.StateDot;
 
@@ -167,7 +165,6 @@ loader.load({
       ".tbw-button:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:-2px}",
       ".tbw-dot{flex:none;justify-content:center;align-items:center;width:10px;display:inline-flex}",
       ".tbw-name{white-space:nowrap;text-overflow:ellipsis;min-width:0;max-width:200px;overflow:hidden}",
-      ".tbw-chevron{flex:none;color:var(--dsw-alias-label-caption);display:inline-flex}",
       ".tbw-menu{position:fixed;top:calc(var(--dsh-windows-titlebar-height,40px) - 4px);z-index:1200;width:216px;max-height:min(60vh,420px);overflow-y:auto;background:var(--dsw-specific-input-major);border:.5px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-md);box-shadow:var(--dsw-elevation-prominent);padding:4px;pointer-events:auto;-webkit-app-region:no-drag;display:flex;flex-direction:column}",
       ".tbw-menu:focus{outline:none}",
       ".tbw-sub{position:fixed;z-index:1201;width:300px;max-height:min(60vh,420px);overflow-y:auto;background:var(--dsw-specific-input-major);border:.5px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-md);box-shadow:var(--dsw-elevation-prominent);padding:4px;pointer-events:auto;-webkit-app-region:no-drag;display:flex;flex-direction:column}",
@@ -695,7 +692,6 @@ loader.load({
             },
             global.state !== "idle" ? h("span", { className: "tbw-dot", "aria-hidden": true }, h(ChipStatus, { state: global.state, size: dotSize(global.state) })) : null,
             h("span", { className: "tbw-name" }, label),
-            h("span", { className: "tbw-chevron", "aria-hidden": true }, h(IconChevronDownRegular, { size: 12 })),
           ),
           error !== null ? h("span", { className: "tbw-error", role: "status", title: error }, "!") : null,
       ), host);

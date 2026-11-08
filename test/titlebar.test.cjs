@@ -64,7 +64,6 @@ window.__ModuleLoader__ = {
 };
 
 const primitives = {
-  IconChevronDownOutlineRegular: (props) => React.createElement("svg", { "data-icon": "chevron", width: props.size, height: props.size }),
   IconNewChatOutlineRegular: (props) => React.createElement("svg", { "data-icon": "new-chat", width: props.size, height: props.size }),
   StateDot: (props) => React.createElement("span", { "data-state-dot": props.state }),
 };
