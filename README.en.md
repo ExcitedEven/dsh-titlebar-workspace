@@ -28,7 +28,8 @@ dsh plugin --profile desktop add github:ExcitedEven/dsh-titlebar-workspace
 2. Hover (or focus) a workspace to expand its conversations on the right.
 3. Click a workspace to open its most relevant conversation: waiting first, then unread, then running, newest when tied; an empty workspace starts a new one.
 4. Click a conversation to open it. "New conversation" reuses an existing blank instead of piling up empties, and the list stays open so the result is visible.
-5. Click outside, press `Esc`, or let a dialog open and the menu closes.
+5. Conversations left behind after a workspace is removed appear under "Ungrouped" and can be opened the same way.
+6. Click outside, press `Esc`, or let a dialog open and the menu closes.
 
 ## Status
 

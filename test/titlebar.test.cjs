@@ -127,6 +127,7 @@ const zh = {
   "menu.new": "新建对话",
   "menu.empty": "还没有工作区",
   "menu.emptySessions": "还没有对话",
+  "menu.ungrouped": "未分组",
   "menu.current": "当前工作区",
   "session.new": "新对话",
   "session.untitled": "未命名对话",
@@ -158,6 +159,8 @@ const sessions = {
     s8: { id: "s8", blank: true, updatedAt: 900, retainedBy: {} },
     s9: { id: "s9", blank: true, updatedAt: 950, retainedBy: { mainView: 1 } },
     s10: { id: "s10", blank: true, updatedAt: 960, retainedBy: {} },
+    s11: { id: "s11", title: "stray-done", updatedAt: 700, retainedBy: {} },
+    s12: { id: "s12", title: "stray-running", updatedAt: 650, retainedBy: {} },
   },
 };
 const statuses = new Map([
@@ -168,6 +171,8 @@ const statuses = new Map([
   ["s5", { running: true }],
   ["s6", { running: false, completionUnread: true }],
   ["s7", { running: false, completionUnread: true }],
+  ["s11", { running: false, completionUnread: true }],
+  ["s12", { running: true }],
 ]);
 
 const component = registration.component;
@@ -221,9 +226,9 @@ const dots = (row) => {
   if (menu.style.left !== "124px") throw new Error(`unexpected menu left: ${menu.style.left}`);
 
   let workspaceRows = [...menu.querySelectorAll("[role=menuitem]")];
-  if (workspaceRows.length !== 5) throw new Error(`expected 5 workspace rows, got ${workspaceRows.length}`);
+  if (workspaceRows.length !== 6) throw new Error(`expected 6 workspace rows, got ${workspaceRows.length}`);
   const rowStates = workspaceRows.map(dots);
-  if (rowStates.join(",") !== "done,warning,ongoing,done,idle") throw new Error(`workspace dots: ${rowStates.join(",")}`);
+  if (rowStates.join(",") !== "done,warning,ongoing,done,idle,done") throw new Error(`workspace dots: ${rowStates.join(",")}`);
   if (workspaceRows[0].getAttribute("data-current") !== "true") throw new Error("current workspace not marked");
 
   // The flyout mirrors the sidebar: current blank first as "新对话", other blanks hidden.
@@ -290,6 +295,25 @@ const dots = (row) => {
   workspaceRows[4].dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
   await wait(30);
   if (calls.join(",") !== "new:w2,open:s3,open:s1,open:s7,new:w5") throw new Error(`blank workspace: ${calls.join(",")}`);
+
+  // Sessions no workspace claims appear under "未分组" and open like the sidebar.
+  chip.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+  await wait(50);
+  workspaceRows = [...window.document.querySelectorAll(".tbw-menu [role=menuitem]")];
+  if (workspaceRows.length !== 6) throw new Error(`expected 6 workspace rows with ungrouped, got ${workspaceRows.length}`);
+  if (workspaceRows[5].textContent !== "未分组") throw new Error(`ungrouped row: ${workspaceRows[5].textContent}`);
+  if (dots(workspaceRows[5]) !== "done") throw new Error(`ungrouped dot: ${dots(workspaceRows[5])}`);
+  workspaceRows[5].dispatchEvent(new window.MouseEvent("mouseover", { bubbles: true, relatedTarget: window.document.body }));
+  await wait(40);
+  sessionsPane = window.document.querySelector(".tbw-sub");
+  const strayRows = [...sessionsPane.querySelectorAll("[role=menuitem]")];
+  if (strayRows.map((row) => row.textContent).join("|") !== "stray-done|stray-running") {
+    throw new Error(`ungrouped pane: ${strayRows.map((row) => row.textContent).join("|")}`);
+  }
+  if (sessionsPane.querySelector(".tbw-new") !== null) throw new Error("ungrouped must not offer a new conversation");
+  workspaceRows[5].dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+  await wait(30);
+  if (calls.join(",") !== "new:w2,open:s3,open:s1,open:s7,new:w5,open:s11") throw new Error(`ungrouped click: ${calls.join(",")}`);
 
   // The chip is a child of the shell's own menubar row, so the row moves it;
   // no measurement is involved.

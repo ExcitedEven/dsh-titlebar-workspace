@@ -131,6 +131,7 @@ loader.load({
       "menu.new": "新建对话",
       "menu.empty": "还没有工作区",
       "menu.emptySessions": "还没有对话",
+      "menu.ungrouped": "未分组",
       "menu.current": "当前工作区",
       "session.new": "新对话",
       "session.untitled": "未命名对话",
@@ -147,6 +148,7 @@ loader.load({
       "menu.new": "New conversation",
       "menu.empty": "No workspaces yet",
       "menu.emptySessions": "No conversations yet",
+      "menu.ungrouped": "Ungrouped",
       "menu.current": "Current workspace",
       "session.new": "New conversation",
       "session.untitled": "Untitled conversation",
@@ -351,6 +353,36 @@ loader.load({
       return state === "ongoing" ? 10 : 8;
     }
 
+    const UNGROUPED = "";
+
+    /**
+     * The sidebar's "Ungrouped" bucket: sessions no workspace claims (for
+     * example after a workspace is removed). Blank placeholders are dropped
+     * except for the current one, matching visibleSessions().
+     */
+    function ungroupedItem(
+      workspaces: WorkspaceItem[],
+      sessions: Record<string, SessionSummary>,
+      currentSessionId: string | null,
+      t: Translate,
+    ): WorkspaceItem | undefined {
+      const grouped = new Set<string>();
+      for (const workspace of workspaces) {
+        for (const id of Array.isArray(workspace.sessionIds) ? workspace.sessionIds : []) grouped.add(id);
+      }
+      const sessionIds: string[] = [];
+      for (const id of Object.keys(sessions)) {
+        const session = sessions[id];
+        if (session === undefined) continue;
+        if (grouped.has(id)) continue;
+        if (session.archived === true) continue;
+        if (session.blank === true && session.id !== currentSessionId) continue;
+        sessionIds.push(id);
+      }
+      if (sessionIds.length === 0) return undefined;
+      return { workspaceId: UNGROUPED, title: t("menu.ungrouped"), sessionIds };
+    }
+
     function statusLabel(state: SessionState, t: Translate): string {
       if (state === "warning") return t("status.warning");
       if (state === "ongoing") return t("status.ongoing");
@@ -493,18 +525,22 @@ loader.load({
       const currentWorkspace = currentSessionId === null
         ? undefined
         : workspaces.find((item) => Array.isArray(item.sessionIds) && item.sessionIds.includes(currentSessionId));
+      // Sessions no workspace claims still belong on the roster, like the
+      // sidebar's "Ungrouped" section.
+      const ungrouped = ungroupedItem(workspaces, sessions, currentSessionId, t);
+      const menuWorkspaces: WorkspaceItem[] = ungrouped === undefined ? workspaces : [...workspaces, ungrouped];
       // The chip reports the whole roster's highest state, so a warning in another
       // workspace still reaches the window's titlebar.
-      const global = globalState(workspaces, statuses, sessions);
+      const global = globalState(menuWorkspaces, statuses, sessions);
       const label = currentWorkspace === undefined ? t("chip.choose") : workspaceTitle(currentWorkspace, t);
       const stateText = statusLabel(global.state, t);
       const ownerTitle = global.workspace !== undefined && (currentWorkspace === undefined || global.workspace.workspaceId !== currentWorkspace.workspaceId)
         ? workspaceTitle(global.workspace, t)
         : undefined;
 
-      const activeWorkspace = workspaces.find((item) => item.workspaceId === activeId)
+      const activeWorkspace = menuWorkspaces.find((item) => item.workspaceId === activeId)
         ?? currentWorkspace
-        ?? workspaces[0];
+        ?? menuWorkspaces[0];
       const activeSessions = activeWorkspace === undefined ? [] : visibleSessions(activeWorkspace, sessions, currentSessionId);
 
       const openMenu = () => {
@@ -705,9 +741,9 @@ loader.load({
                 onKeyDown: onMenuKeyDown,
               },
               h("div", { className: "tbw-menuLabel" }, t("menu.workspaces")),
-              workspaces.length === 0
+              menuWorkspaces.length === 0
                 ? h("div", { className: "tbw-empty" }, t("menu.empty"))
-                : workspaces.map((item) => {
+                : menuWorkspaces.map((item) => {
                     const rowState = workspaceState(item, statuses, sessions);
                     const active = activeWorkspace !== undefined && activeWorkspace.workspaceId === item.workspaceId;
                     const isCurrent = currentWorkspace !== undefined && currentWorkspace.workspaceId === item.workspaceId;
@@ -732,8 +768,8 @@ loader.load({
                         },
                         onClick: () => {
                           const target = bestSession(item, sessions, statuses);
-                          if (target === undefined) run(() => newSession(item.workspaceId));
-                          else run(() => openSession(target.id));
+                          if (target !== undefined) run(() => openSession(target.id));
+                          else if (item.workspaceId !== UNGROUPED) run(() => newSession(item.workspaceId));
                         },
                       },
                       rowState !== "idle"
@@ -764,21 +800,23 @@ loader.load({
                 { className: "tbw-subHead", title: workspacePath(activeWorkspace) },
                 workspaceTitle(activeWorkspace, t),
               ),
-              h(
-                "button",
-                {
-                  type: "button",
-                  className: "tbw-new",
-                  onClick: () => {
-                    setError(null);
-                    Promise.resolve(newSession(activeWorkspace.workspaceId)).catch((reason) => {
-                      setError(reason instanceof Error ? reason.message : String(reason));
-                    });
-                  },
-                },
-                h("span", { className: "tbw-plus", "aria-hidden": true }, IconNewChatRegular === undefined ? "+" : h(IconNewChatRegular, { size: 16 })),
-                h("span", { className: "tbw-itemName" }, t("menu.new")),
-              ),
+              activeWorkspace.workspaceId === UNGROUPED
+                ? null
+                : h(
+                    "button",
+                    {
+                      type: "button",
+                      className: "tbw-new",
+                      onClick: () => {
+                        setError(null);
+                        Promise.resolve(newSession(activeWorkspace.workspaceId)).catch((reason) => {
+                          setError(reason instanceof Error ? reason.message : String(reason));
+                        });
+                      },
+                    },
+                    h("span", { className: "tbw-plus", "aria-hidden": true }, IconNewChatRegular === undefined ? "+" : h(IconNewChatRegular, { size: 16 })),
+                    h("span", { className: "tbw-itemName" }, t("menu.new")),
+                  ),
               activeSessions.length === 0
                 ? h("div", { className: "tbw-empty" }, t("menu.emptySessions"))
                 : activeSessions.map((session) => {

@@ -77,6 +77,7 @@ const t = (key, params) => {
     "menu.new": "新建对话",
     "menu.empty": "还没有工作区",
     "menu.emptySessions": "还没有对话",
+  "menu.ungrouped": "未分组",
     "menu.current": "当前工作区",
     "session.new": "新对话",
   "session.untitled": "未命名对话",
@@ -100,6 +101,8 @@ const sessions = {
     s2: { id: "s2", title: "old-session", updatedAt: 100, retainedBy: {} },
     s3: { id: "s3", title: "review-changes", updatedAt: 200, retainedBy: {} },
     s4: { id: "s4", title: "run-tests", updatedAt: 250, retainedBy: {} },
+    s5: { id: "s5", title: "stray-done", updatedAt: 700, retainedBy: {} },
+    s6: { id: "s6", title: "stray-running", updatedAt: 650, retainedBy: {} },
   },
 };
 const statuses = new Map([
@@ -107,6 +110,8 @@ const statuses = new Map([
   ["s2", { running: false }],
   ["s3", { running: false, pendingInteraction: { kind: "approval" } }],
   ["s4", { running: true }],
+  ["s5", { running: false, completionUnread: true }],
+  ["s6", { running: true }],
 ]);
 
 const root = createRoot(window.document.getElementById("root"));
