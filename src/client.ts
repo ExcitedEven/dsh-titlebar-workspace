@@ -15,6 +15,7 @@ type SessionState = "warning" | "done" | "ongoing" | "idle";
 interface SessionSummary {
   id: string;
   title?: string;
+  origin?: string;
   blank?: boolean;
   archived?: boolean;
   updatedAt?: number;
@@ -308,6 +309,7 @@ loader.load({
       for (const sessionId of Array.isArray(item.sessionIds) ? item.sessionIds : []) {
         if (archived !== undefined && archived.has(sessionId)) continue;
         if (sessions !== undefined && sessions[sessionId]?.archived === true) continue;
+        if (sessions !== undefined && sessions[sessionId]?.origin === "subagent") continue;
         // The sidebar never lets a blank placeholder carry a status.
         if (isBlank(sessions === undefined ? undefined : sessions[sessionId])) continue;
         const state = sessionState(lookup(statuses, sessionId));
@@ -347,6 +349,7 @@ loader.load({
         if (archived !== undefined && archived.has(sessionId)) continue;
         const session = sessions[sessionId];
         if (session === undefined || session.archived === true || session.blank === true) continue;
+        if (session.origin === "subagent") continue;
         const rank = rankOf(sessionState(lookup(statuses, sessionId)));
         if (rank > bestRank || (rank === bestRank && (session.updatedAt ?? 0) > (best === undefined ? -1 : best.updatedAt ?? 0))) {
           best = session;
@@ -372,6 +375,7 @@ loader.load({
       for (const id of Array.isArray(item.sessionIds) ? item.sessionIds : []) {
         const session = sessions[id];
         if (session === undefined) continue;
+        if (session.origin === "subagent") continue;
         if (archived.has(session.id) || session.archived === true) continue;
         if (session.blank === true && session.id !== currentSessionId) continue;
         members.push(session);
@@ -453,6 +457,7 @@ loader.load({
       for (const id of sessionIds) {
         const session = sessions[id];
         if (session === undefined) continue;
+        if (session.origin === "subagent") continue;
         if (grouped.has(id)) continue;
         if (archived.has(id) || session.archived === true) continue;
         if (session.blank === true && session.id !== currentSessionId) continue;
@@ -732,7 +737,9 @@ loader.load({
               .map((id) => sessions[id])
               .filter(
                 (session): session is SessionSummary =>
-                  session !== undefined && !(session.blank === true && session.id !== currentSessionId),
+                  session !== undefined &&
+                  session.origin !== "subagent" &&
+                  !(session.blank === true && session.id !== currentSessionId),
               );
 
       const openMenu = () => {

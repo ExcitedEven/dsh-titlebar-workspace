@@ -40,6 +40,7 @@ dsh plugin --profile desktop add github:ExcitedEven/dsh-titlebar-workspace
 - The chip carries the most urgent state across all workspaces, so a warning in another project is visible (hover names the workspace); each workspace row shows its own aggregate, and every conversation row its own dot.
 - Blank conversations match the sidebar: only the current "New conversation" is listed; other blanks are hidden and never count toward a status or a click target.
 - Pinned conversations come first; archived conversations stay hidden.
+- Subagent sessions stay hidden, matching the sidebar.
 
 ## Why the button is in the titlebar
 

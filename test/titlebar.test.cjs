@@ -172,7 +172,7 @@ const workspaces = {
   archivedSessionIds: ["s13"],
   pinnedSessionIds: ["s2"],
   items: [
-    { workspaceId: "w1", title: "working-project", sessionIds: ["s1", "s2", "s5", "s8", "s9", "s13"], path: "/home/user/projects/working-project" },
+    { workspaceId: "w1", title: "working-project", sessionIds: ["s1", "s2", "s5", "s8", "s9", "s13", "s15"], path: "/home/user/projects/working-project" },
     { workspaceId: "w2", title: "pending-project", sessionIds: ["s3"], path: "/home/user/projects/pending-project" },
     { workspaceId: "w3", title: "running-project", sessionIds: ["s4"], path: "/home/user/projects/running-project" },
     { workspaceId: "w4", title: "tie-project", sessionIds: ["s6", "s7"], path: "/home/user/projects/tie-project" },
@@ -194,6 +194,8 @@ const sessions = {
     s11: { id: "s11", title: "stray-done", updatedAt: 700, retainedBy: {} },
     s12: { id: "s12", title: "stray-running", updatedAt: 650, retainedBy: {} },
     s13: { id: "s13", title: "archived-session", updatedAt: 800, retainedBy: {} },
+    s14: { id: "s14", title: "side-subagent", origin: "subagent", updatedAt: 750, retainedBy: {} },
+    s15: { id: "s15", title: "subagent-in-workspace", origin: "subagent", updatedAt: 780, retainedBy: {} },
   },
 };
 const statuses = new Map([
@@ -206,6 +208,8 @@ const statuses = new Map([
   ["s7", { running: false, completionUnread: true }],
   ["s11", { running: false, completionUnread: true }],
   ["s12", { running: true }],
+  ["s14", { running: false, pendingInteraction: { kind: "approval" } }],
+  ["s15", { running: false, pendingInteraction: { kind: "approval" } }],
 ]);
 
 const component = registration.component;
@@ -275,6 +279,7 @@ const dots = (row) => {
     throw new Error(`unexpected first pane: ${sessionRows.map((row) => row.textContent).join("|")}`);
   }
   if (sessionRows.map(dots).join(",") !== "idle,idle,done,ongoing") throw new Error(`session dots: ${sessionRows.map(dots).join(",")}`);
+  if (sessionRows.some((row) => row.textContent === "subagent-in-workspace")) throw new Error("subagent leaked into the flyout");
 
   // Pin / archive act in place; archived conversations can be restored.
   const rowByName = (name) => {
@@ -379,6 +384,7 @@ const dots = (row) => {
   await wait(40);
   sessionsPane = window.document.querySelector(".tbw-sub");
   const strayRows = [...sessionsPane.querySelectorAll("[role=menuitem]")];
+  if (strayRows.some((row) => row.textContent === "side-subagent")) throw new Error("subagent leaked into ungrouped");
   if (strayRows.map((row) => row.textContent).join("|") !== "stray-done|stray-running") {
     throw new Error(`ungrouped pane: ${strayRows.map((row) => row.textContent).join("|")}`);
   }
