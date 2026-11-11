@@ -28,8 +28,9 @@ dsh plugin --profile desktop add github:ExcitedEven/dsh-titlebar-workspace
 2. Hover (or focus) a workspace to expand its conversations on the right.
 3. Click a workspace to open its most relevant conversation: waiting first, then unread, then running, newest when tied; an empty workspace starts a new one.
 4. Click a conversation to open it. "New conversation" reuses an existing blank instead of piling up empties, and the list stays open so the result is visible.
-5. Conversations left behind after a workspace is removed appear under "Ungrouped" and can be opened the same way.
-6. Click outside, press `Esc`, or let a dialog open and the menu closes.
+5. Each conversation row can be pinned/unpinned or archived; archived conversations can be restored from the "Archived" toggle at the bottom of the flyout.
+6. Conversations left behind after a workspace is removed appear under "Ungrouped" and can be opened the same way.
+7. Click outside, press `Esc`, or let a dialog open and the menu closes.
 
 ## Status
 
@@ -38,6 +39,7 @@ dsh plugin --profile desktop add github:ExcitedEven/dsh-titlebar-workspace
 - **Spinner**: a conversation is running.
 - The chip carries the most urgent state across all workspaces, so a warning in another project is visible (hover names the workspace); each workspace row shows its own aggregate, and every conversation row its own dot.
 - Blank conversations match the sidebar: only the current "New conversation" is listed; other blanks are hidden and never count toward a status or a click target.
+- Pinned conversations come first; archived conversations stay hidden.
 
 ## Why the button is in the titlebar
 

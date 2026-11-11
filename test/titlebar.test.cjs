@@ -65,6 +65,10 @@ window.__ModuleLoader__ = {
 
 const primitives = {
   IconNewChatOutlineRegular: (props) => React.createElement("svg", { "data-icon": "new-chat", width: props.size, height: props.size }),
+  IconPinOutlineRegular: (props) => React.createElement("svg", { "data-icon": "pin", width: props.size, height: props.size }),
+  IconPinFillRegular: (props) => React.createElement("svg", { "data-icon": "pin-fill", width: props.size, height: props.size }),
+  IconArchiveOutlineRegular: (props) => React.createElement("svg", { "data-icon": "archive", width: props.size, height: props.size }),
+  IconUnarchiveOutlineRegular: (props) => React.createElement("svg", { "data-icon": "unarchive", width: props.size, height: props.size }),
   StateDot: (props) => React.createElement("span", { "data-state-dot": props.state }),
 };
 
@@ -81,6 +85,25 @@ const exportsObject = definition.factory((name) => {
 
 const registrations = [];
 const calls = [];
+const actions = [];
+const sessionActions = {
+  pinSession: (sessionId) => {
+    actions.push(`pin:${sessionId}`);
+    return Promise.resolve({ ok: true });
+  },
+  unpinSession: (sessionId) => {
+    actions.push(`unpin:${sessionId}`);
+    return Promise.resolve({ ok: true });
+  },
+  archiveSession: (sessionId) => {
+    actions.push(`archive:${sessionId}`);
+    return Promise.resolve({ ok: true });
+  },
+  unarchiveSession: (sessionId) => {
+    actions.push(`unarchive:${sessionId}`);
+    return Promise.resolve({ ok: true });
+  },
+};
 const ctx = {
   effect(effect) {
     effect();
@@ -111,6 +134,7 @@ const ctx = {
       return Promise.resolve();
     },
   },
+  workspaces: sessionActions,
 };
 exportsObject.apply(ctx);
 
@@ -128,6 +152,12 @@ const zh = {
   "menu.empty": "还没有工作区",
   "menu.emptySessions": "还没有对话",
   "menu.ungrouped": "未分组",
+  "menu.archived": "已归档",
+  "menu.hideArchived": "收起已归档",
+  "action.pin": "置顶",
+  "action.unpin": "取消置顶",
+  "action.archive": "归档",
+  "action.unarchive": "取消归档",
   "menu.current": "当前工作区",
   "session.new": "新对话",
   "session.untitled": "未命名对话",
@@ -139,8 +169,10 @@ const t = (key, params) => (zh[key] ?? key).replace("{name}", params === undefin
 
 const workspaces = {
   phase: "ready",
+  archivedSessionIds: ["s13"],
+  pinnedSessionIds: ["s2"],
   items: [
-    { workspaceId: "w1", title: "working-project", sessionIds: ["s1", "s2", "s5", "s8", "s9"], path: "/home/user/projects/working-project" },
+    { workspaceId: "w1", title: "working-project", sessionIds: ["s1", "s2", "s5", "s8", "s9", "s13"], path: "/home/user/projects/working-project" },
     { workspaceId: "w2", title: "pending-project", sessionIds: ["s3"], path: "/home/user/projects/pending-project" },
     { workspaceId: "w3", title: "running-project", sessionIds: ["s4"], path: "/home/user/projects/running-project" },
     { workspaceId: "w4", title: "tie-project", sessionIds: ["s6", "s7"], path: "/home/user/projects/tie-project" },
@@ -161,6 +193,7 @@ const sessions = {
     s10: { id: "s10", blank: true, updatedAt: 960, retainedBy: {} },
     s11: { id: "s11", title: "stray-done", updatedAt: 700, retainedBy: {} },
     s12: { id: "s12", title: "stray-running", updatedAt: 650, retainedBy: {} },
+    s13: { id: "s13", title: "archived-session", updatedAt: 800, retainedBy: {} },
   },
 };
 const statuses = new Map([
@@ -191,6 +224,8 @@ root.render(
       calls.push(`new:${workspaceId}`);
       return Promise.resolve();
     },
+    useSessionAccess: () => true,
+    ...sessionActions,
     t,
   }),
 );
@@ -236,10 +271,47 @@ const dots = (row) => {
   if (sessionsPane === null) throw new Error("flyout did not open");
   if (sessionsPane.style.left !== "342px") throw new Error(`flyout should sit right of the menu: ${sessionsPane.style.left}`);
   let sessionRows = [...sessionsPane.querySelectorAll("[role=menuitem]")];
-  if (sessionRows.map((row) => row.textContent).join("|") !== "新对话|another-running-session|done-session|old-session") {
+  if (sessionRows.map((row) => row.textContent).join("|") !== "新对话|old-session|done-session|another-running-session") {
     throw new Error(`unexpected first pane: ${sessionRows.map((row) => row.textContent).join("|")}`);
   }
-  if (sessionRows.map(dots).join(",") !== "idle,ongoing,done,idle") throw new Error(`session dots: ${sessionRows.map(dots).join(",")}`);
+  if (sessionRows.map(dots).join(",") !== "idle,idle,done,ongoing") throw new Error(`session dots: ${sessionRows.map(dots).join(",")}`);
+
+  // Pin / archive act in place; archived conversations can be restored.
+  const rowByName = (name) => {
+    const main = [...sessionsPane.querySelectorAll('[role="menuitem"]')].find((row) => row.textContent === name);
+    return main === undefined ? null : main.closest(".tbw-session");
+  };
+  const pinButton = rowByName("done-session") === null ? null : rowByName("done-session").querySelector('[data-action="pin"]');
+  if (pinButton === null) throw new Error("pin action missing");
+  pinButton.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+  await wait(20);
+  if (actions.join(",") !== "pin:s1") throw new Error(`pin action: ${actions.join(",")}`);
+
+  const archiveButton =
+    rowByName("another-running-session") === null
+      ? null
+      : rowByName("another-running-session").querySelector('[data-action="archive"]');
+  if (archiveButton === null) throw new Error("archive action missing");
+  archiveButton.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+  await wait(20);
+  if (actions.join(",") !== "pin:s1,archive:s5") throw new Error(`archive action: ${actions.join(",")}`);
+
+  const archivedToggle = sessionsPane.querySelector(".tbw-archivedToggle");
+  if (archivedToggle === null || !archivedToggle.textContent.includes("已归档")) throw new Error("archived toggle missing");
+  archivedToggle.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+  await wait(30);
+  const archivedMain = [...sessionsPane.querySelectorAll('[role="menuitem"]')].find(
+    (row) => row.textContent === "archived-session",
+  );
+  if (archivedMain === undefined) throw new Error("archived row missing after toggle");
+  const archivedRow = archivedMain.closest(".tbw-session");
+  const unarchiveButton = archivedRow.querySelector('[data-action="unarchive"]');
+  if (unarchiveButton === null) throw new Error("unarchive action missing");
+  // The empty pin slot keeps the unarchive icon in the archive column.
+  if (archivedRow.querySelector(".tbw-rowActionSpacer") === null) throw new Error("archived row misses the pin spacer");
+  unarchiveButton.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+  await wait(20);
+  if (actions.join(",") !== "pin:s1,archive:s5,unarchive:s13") throw new Error(`unarchive action: ${actions.join(",")}`);
 
   // Hovering another workspace swaps the pane without navigating.
   workspaceRows[1].dispatchEvent(new window.MouseEvent("mouseover", { bubbles: true, relatedTarget: window.document.body }));

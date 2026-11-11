@@ -37,6 +37,10 @@ window.Element.prototype.getBoundingClientRect = function getBoundingClientRect(
 window.__ModuleLoader__ = { load: (definition) => loaded.push(definition) };
 const loaded = [];
 const primitives = {
+  IconPinOutlineRegular: (props) => React.createElement("svg", { width: props.size, height: props.size, viewBox: "0 0 16 16", fill: "none" }, React.createElement("path", { d: "M5.5 2.5h5v3l1.5 2v1H4v-1l1.5-2z", stroke: "currentColor", strokeWidth: 1.2, strokeLinejoin: "round" }), React.createElement("path", { d: "M8 9.5v4", stroke: "currentColor", strokeWidth: 1.2, strokeLinecap: "round" })),
+  IconPinFillRegular: (props) => React.createElement("svg", { width: props.size, height: props.size, viewBox: "0 0 16 16", fill: "currentColor" }, React.createElement("path", { d: "M5.5 2.5h5v3l1.5 2v1H4v-1l1.5-2z" }), React.createElement("path", { d: "M8 9.5v4" , stroke: "currentColor", strokeWidth: 1.2, strokeLinecap: "round" })),
+  IconArchiveOutlineRegular: (props) => React.createElement("svg", { width: props.size, height: props.size, viewBox: "0 0 16 16", fill: "none" }, React.createElement("rect", { x: 2.5, y: 3, width: 11, height: 3, rx: 1, stroke: "currentColor", strokeWidth: 1.2 }), React.createElement("path", { d: "M3.5 6v6.5h9V6M6.5 8.5h3", stroke: "currentColor", strokeWidth: 1.2, strokeLinecap: "round" })),
+  IconUnarchiveOutlineRegular: (props) => React.createElement("svg", { width: props.size, height: props.size, viewBox: "0 0 16 16", fill: "none" }, React.createElement("rect", { x: 2.5, y: 3, width: 11, height: 3, rx: 1, stroke: "currentColor", strokeWidth: 1.2 }), React.createElement("path", { d: "M3.5 6v6.5h9V6M8 8v3M6.5 9.5 8 8l1.5 1.5", stroke: "currentColor", strokeWidth: 1.2, strokeLinecap: "round", strokeLinejoin: "round" })),
   IconNewChatOutlineRegular: (props) => React.createElement("svg", { width: props.size, height: props.size, viewBox: "0 0 16 16", fill: "none" }, React.createElement("rect", { x: "2.5", y: "3", width: "11", height: "10", rx: "2.5", stroke: "currentColor", strokeWidth: "1.2" }), React.createElement("path", { d: "M8 6v4M6 8h4", stroke: "currentColor", strokeWidth: "1.2", strokeLinecap: "round" })),
   // Mirrors primitives' StateDot: "ongoing" is the gray spinner ring, the rest are dots.
   StateDot: ({ state, size }) => {
@@ -65,6 +69,12 @@ exportsObject.apply({
   locale: { register() {}, bind: () => (key) => key },
   slots: { inject: (_slot, factory) => factory(), register: (declaration, component) => registrations.push({ declaration, component }) },
   uiWorkspace: { openWorkspace: async () => {} },
+  workspaces: {
+    pinSession: async () => ({}),
+    unpinSession: async () => ({}),
+    archiveSession: async () => ({}),
+    unarchiveSession: async () => ({}),
+  },
 });
 
 const t = (key, params) => {
@@ -78,6 +88,12 @@ const t = (key, params) => {
     "menu.empty": "还没有工作区",
     "menu.emptySessions": "还没有对话",
   "menu.ungrouped": "未分组",
+  "menu.archived": "已归档",
+  "menu.hideArchived": "收起已归档",
+  "action.pin": "置顶",
+  "action.unpin": "取消置顶",
+  "action.archive": "归档",
+  "action.unarchive": "取消归档",
     "menu.current": "当前工作区",
     "session.new": "新对话",
   "session.untitled": "未命名对话",
@@ -122,6 +138,11 @@ root.render(
     useSessionStatus: (selector) => selector(statuses),
     openSession: async () => {},
     newSession: async () => {},
+    pinSession: async () => ({}),
+    unpinSession: async () => ({}),
+    archiveSession: async () => ({}),
+    unarchiveSession: async () => ({}),
+    useSessionAccess: () => true,
     t,
   }),
 );

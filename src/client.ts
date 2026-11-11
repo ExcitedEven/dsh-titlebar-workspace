@@ -44,21 +44,36 @@ type SelectorHook<T> = <R>(selector: (value: T) => R) => R;
 
 interface WorkspaceSnapshot {
   items?: WorkspaceItem[];
+  archivedSessionIds?: string[];
+  pinnedSessionIds?: string[];
 }
 
 interface SessionSnapshot {
   byId?: Record<string, SessionSummary>;
+  ids?: string[];
 }
 
 interface Primitives {
   IconNewChatOutlineRegular?: React.ComponentType<{ size?: number }>;
+  IconPinOutlineRegular?: React.ComponentType<{ size?: number }>;
+  IconPinFillRegular?: React.ComponentType<{ size?: number }>;
+  IconArchiveOutlineRegular?: React.ComponentType<{ size?: number }>;
+  IconUnarchiveOutlineRegular?: React.ComponentType<{ size?: number }>;
   StateDot: React.ComponentType<{ state: SessionState; size?: number }>;
 }
 
-interface ChipProps {
+interface SessionActions {
+  pinSession: (sessionId: string) => Promise<unknown>;
+  unpinSession: (sessionId: string) => Promise<unknown>;
+  archiveSession: (sessionId: string) => Promise<unknown>;
+  unarchiveSession: (sessionId: string) => Promise<unknown>;
+}
+
+interface ChipProps extends SessionActions {
   useWorkspaces: SelectorHook<WorkspaceSnapshot>;
   useSessions: SelectorHook<SessionSnapshot>;
   useSessionStatus: SelectorHook<StatusLookup>;
+  useSessionAccess?: (sessionId: string, action: string) => boolean;
   openSession: (sessionId: string) => void;
   newSession: (workspaceId: string) => void;
   t: Translate;
@@ -69,7 +84,7 @@ interface SlotDeclaration {
   id: string;
   order: number;
   locale: string;
-  inject: () => {
+  inject: () => SessionActions & {
     openSession: (sessionId: string) => void;
     newSession: (workspaceId: string) => void;
   };
@@ -88,6 +103,12 @@ interface ClientContext {
   uiWorkspace: {
     openSession(sessionId: string): void;
     startSession(workspaceId: string): void;
+  };
+  workspaces: {
+    pinSession(sessionId: string): Promise<unknown>;
+    unpinSession(sessionId: string): Promise<unknown>;
+    archiveSession(sessionId: string, options?: { stopActivity?: boolean }): Promise<unknown>;
+    unarchiveSession(sessionId: string): Promise<unknown>;
   };
 }
 
@@ -115,6 +136,10 @@ loader.load({
     const h = React.createElement;
     const primitives = require("@deepseek-ai/dsh-client-ui-primitives") as Primitives;
     const IconNewChatRegular = primitives.IconNewChatOutlineRegular;
+    const IconPinOutline = primitives.IconPinOutlineRegular;
+    const IconPinFill = primitives.IconPinFillRegular;
+    const IconArchiveOutline = primitives.IconArchiveOutlineRegular;
+    const IconUnarchiveOutline = primitives.IconUnarchiveOutlineRegular;
     const StateDot = primitives.StateDot;
 
     const NS = "titlebar-workspace";
@@ -132,6 +157,12 @@ loader.load({
       "menu.empty": "还没有工作区",
       "menu.emptySessions": "还没有对话",
       "menu.ungrouped": "未分组",
+      "menu.archived": "已归档",
+      "menu.hideArchived": "收起已归档",
+      "action.pin": "置顶",
+      "action.unpin": "取消置顶",
+      "action.archive": "归档",
+      "action.unarchive": "取消归档",
       "menu.current": "当前工作区",
       "session.new": "新对话",
       "session.untitled": "未命名对话",
@@ -149,6 +180,12 @@ loader.load({
       "menu.empty": "No workspaces yet",
       "menu.emptySessions": "No conversations yet",
       "menu.ungrouped": "Ungrouped",
+      "menu.archived": "Archived",
+      "menu.hideArchived": "Hide archived",
+      "action.pin": "Pin",
+      "action.unpin": "Unpin",
+      "action.archive": "Archive",
+      "action.unarchive": "Unarchive",
       "menu.current": "Current workspace",
       "session.new": "New conversation",
       "session.untitled": "Untitled conversation",
@@ -181,6 +218,16 @@ loader.load({
       ".tbw-check{flex:none;color:currentColor;display:inline-flex}",
       ".tbw-new{border:0;border-radius:var(--dsw-radius-sm);background:0 0;width:100%;height:32px;padding:0 8px;color:var(--dsw-alias-label-secondary);font-family:var(--dsw-font-family);font-size:14px;line-height:20px;text-align:left;cursor:pointer;align-items:center;gap:8px;display:flex;flex:none}",
       ".tbw-new:hover,.tbw-new:focus-visible{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary);outline:none}",
+      ".tbw-session{display:flex;align-items:center;gap:2px}",
+      ".tbw-session .tbw-item{flex:1;min-width:0}",
+      ".tbw-rowAction{flex:none;border:0;border-radius:var(--dsw-radius-sm);background:0 0;width:24px;height:24px;padding:0;color:var(--dsw-alias-label-tertiary);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;opacity:0}",
+      ".tbw-session:hover .tbw-rowAction,.tbw-session:focus-within .tbw-rowAction{opacity:1}",
+      ".tbw-rowAction:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}",
+      ".tbw-rowAction:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:-2px;opacity:1}",
+      ".tbw-rowActionSpacer{flex:none;width:24px;height:24px;visibility:hidden}",
+      ".tbw-item[data-archived=true]{opacity:.55}",
+      ".tbw-archivedToggle{border:0;border-radius:var(--dsw-radius-sm);background:0 0;width:100%;height:28px;padding:0 8px;color:var(--dsw-alias-label-tertiary);font-family:var(--dsw-font-family);font-size:12px;text-align:left;cursor:pointer;flex:none}",
+      ".tbw-archivedToggle:hover{background:var(--dsw-alias-interactive-bg-hover)}",
       ".tbw-plus{flex:none;justify-content:center;align-items:center;width:16px;height:16px;color:currentColor;display:inline-flex}",
       ".tbw-empty{color:var(--dsw-alias-label-tertiary);font-size:13px;line-height:20px;padding:8px}",
       ".tbw-error{pointer-events:auto;color:var(--dsw-alias-state-error-primary);font-size:13px;padding-left:4px}",
@@ -251,9 +298,16 @@ loader.load({
     }
 
     /** Aggregate the members of one workspace for its row in the left column. */
-    function workspaceState(item: WorkspaceItem, statuses: StatusLookup, sessions?: Record<string, SessionSummary>): SessionState {
+    function workspaceState(
+      item: WorkspaceItem,
+      statuses: StatusLookup,
+      sessions?: Record<string, SessionSummary>,
+      archived?: Set<string>,
+    ): SessionState {
       let best: SessionState = "idle";
       for (const sessionId of Array.isArray(item.sessionIds) ? item.sessionIds : []) {
+        if (archived !== undefined && archived.has(sessionId)) continue;
+        if (sessions !== undefined && sessions[sessionId]?.archived === true) continue;
         // The sidebar never lets a blank placeholder carry a status.
         if (isBlank(sessions === undefined ? undefined : sessions[sessionId])) continue;
         const state = sessionState(lookup(statuses, sessionId));
@@ -263,10 +317,15 @@ loader.load({
     }
 
     /** Highest-priority workspace across the roster, used by the chip outside the menu. */
-    function globalState(workspaces: WorkspaceItem[], statuses: StatusLookup, sessions?: Record<string, SessionSummary>): { state: SessionState; workspace?: WorkspaceItem } {
+    function globalState(
+      workspaces: WorkspaceItem[],
+      statuses: StatusLookup,
+      sessions?: Record<string, SessionSummary>,
+      archived?: Set<string>,
+    ): { state: SessionState; workspace?: WorkspaceItem } {
       let best: { state: SessionState; workspace?: WorkspaceItem } = { state: "idle" };
       for (const workspace of workspaces) {
-        const state = workspaceState(workspace, statuses, sessions);
+        const state = workspaceState(workspace, statuses, sessions, archived);
         if (rankOf(state) > rankOf(best.state)) best = { state, workspace };
       }
       return best;
@@ -276,10 +335,16 @@ loader.load({
      * The conversation a workspace click should open: highest state first
      * (warning > done > ongoing > idle), newest first among equal states.
      */
-    function bestSession(item: WorkspaceItem, sessions: Record<string, SessionSummary>, statuses: StatusLookup): SessionSummary | undefined {
+    function bestSession(
+      item: WorkspaceItem,
+      sessions: Record<string, SessionSummary>,
+      statuses: StatusLookup,
+      archived?: Set<string>,
+    ): SessionSummary | undefined {
       let best;
       let bestRank = -1;
       for (const sessionId of Array.isArray(item.sessionIds) ? item.sessionIds : []) {
+        if (archived !== undefined && archived.has(sessionId)) continue;
         const session = sessions[sessionId];
         if (session === undefined || session.archived === true || session.blank === true) continue;
         const rank = rankOf(sessionState(lookup(statuses, sessionId)));
@@ -296,16 +361,27 @@ loader.load({
      * session, plus the current blank one as the provisional New Conversation
      * row (always first); other blanks stay hidden.
      */
-    function visibleSessions(item: WorkspaceItem, sessions: Record<string, SessionSummary>, currentSessionId: string | null): SessionSummary[] {
-      return (Array.isArray(item.sessionIds) ? item.sessionIds : [])
-        .map((id) => sessions[id])
-        .filter((session) => session !== undefined && session.archived !== true && (session.blank !== true || session.id === currentSessionId))
-        .sort((a, b) => {
-          const aBlank = a.blank === true ? 1 : 0;
-          const bBlank = b.blank === true ? 1 : 0;
-          if (aBlank !== bBlank) return bBlank - aBlank;
-          return (b.updatedAt ?? 0) - (a.updatedAt ?? 0);
-        });
+    function visibleSessions(
+      item: WorkspaceItem,
+      sessions: Record<string, SessionSummary>,
+      currentSessionId: string | null,
+      pinned: Set<string>,
+      archived: Set<string>,
+    ): SessionSummary[] {
+      const members: SessionSummary[] = [];
+      for (const id of Array.isArray(item.sessionIds) ? item.sessionIds : []) {
+        const session = sessions[id];
+        if (session === undefined) continue;
+        if (archived.has(session.id) || session.archived === true) continue;
+        if (session.blank === true && session.id !== currentSessionId) continue;
+        members.push(session);
+      }
+      // Matches the sidebar's sectionMembers(): the current New Session row,
+      // then pinned rows, then the rest — each keeping the workspace's order.
+      const placeholders = members.filter((session) => session.blank === true);
+      const pinnedRows = members.filter((session) => session.blank !== true && pinned.has(session.id));
+      const rest = members.filter((session) => session.blank !== true && !pinned.has(session.id));
+      return [...placeholders, ...pinnedRows, ...rest];
     }
 
     /**
@@ -362,25 +438,35 @@ loader.load({
      */
     function ungroupedItem(
       workspaces: WorkspaceItem[],
+      sessionIds: string[],
       sessions: Record<string, SessionSummary>,
       currentSessionId: string | null,
+      pinned: Set<string>,
+      archived: Set<string>,
       t: Translate,
     ): WorkspaceItem | undefined {
       const grouped = new Set<string>();
       for (const workspace of workspaces) {
         for (const id of Array.isArray(workspace.sessionIds) ? workspace.sessionIds : []) grouped.add(id);
       }
-      const sessionIds: string[] = [];
-      for (const id of Object.keys(sessions)) {
+      const stray: SessionSummary[] = [];
+      for (const id of sessionIds) {
         const session = sessions[id];
         if (session === undefined) continue;
         if (grouped.has(id)) continue;
-        if (session.archived === true) continue;
+        if (archived.has(id) || session.archived === true) continue;
         if (session.blank === true && session.id !== currentSessionId) continue;
-        sessionIds.push(id);
+        stray.push(session);
       }
-      if (sessionIds.length === 0) return undefined;
-      return { workspaceId: UNGROUPED, title: t("menu.ungrouped"), sessionIds };
+      // The sidebar's orderByRecency(): newest first, id as the tie-break.
+      stray.sort((a, b) => {
+        const aRank = a.updatedAt ?? 0;
+        const bRank = b.updatedAt ?? 0;
+        if (aRank !== bRank) return bRank - aRank;
+        return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+      });
+      if (stray.length === 0) return undefined;
+      return { workspaceId: UNGROUPED, title: t("menu.ungrouped"), sessionIds: stray.map((session) => session.id) };
     }
 
     function statusLabel(state: SessionState, t: Translate): string {
@@ -394,6 +480,91 @@ loader.load({
       if (session.blank === true) return t("session.new");
       if (typeof session.title === "string" && session.title !== "") return session.title;
       return t("session.untitled");
+    }
+
+    function iconNode(component: React.ComponentType<{ size?: number }> | undefined, size: number): React.ReactNode {
+      return component === undefined ? null : h(component, { size });
+    }
+
+    interface SessionRowProps {
+      session: SessionSummary;
+      state: SessionState;
+      current: boolean;
+      pinned: boolean;
+      archived: boolean;
+      useSessionAccess?: (sessionId: string, action: string) => boolean;
+      open: () => void;
+      pin: () => void;
+      archive: () => void;
+      unarchive: () => void;
+      t: Translate;
+    }
+
+    /** One conversation row: open plus pin / archive actions. */
+    function SessionRow({
+      session,
+      state,
+      current,
+      pinned,
+      archived,
+      useSessionAccess,
+      open,
+      pin,
+      archive,
+      unarchive,
+      t,
+    }: SessionRowProps) {
+      const access = useSessionAccess ?? (() => true);
+      const canPin = !archived && access(session.id, pinned ? "workspace/unpinSession" : "workspace/pinSession");
+      const canArchive = access(session.id, archived ? "workspace/unarchiveSession" : "workspace/archiveSession");
+      return h(
+        "div",
+        { className: "tbw-session", "data-archived": archived || undefined },
+        h(
+          "button",
+          {
+            type: "button",
+            role: "menuitem",
+            className: "tbw-item",
+            "data-archived": archived || undefined,
+            "aria-current": current ? "true" : undefined,
+            title: [sessionTitle(session, t), statusLabel(state, t)].filter(Boolean).join("\n"),
+            onClick: open,
+          },
+          state !== "idle"
+            ? h("span", { className: "tbw-dot", "aria-hidden": true }, h(StateDot, { state, size: dotSize(state) }))
+            : h("span", { className: "tbw-dot", "aria-hidden": true }),
+          h("span", { className: "tbw-itemName" }, sessionTitle(session, t)),
+        ),
+        canArchive
+          ? h(
+              "button",
+              {
+                type: "button",
+                className: "tbw-rowAction",
+                "data-action": archived ? "unarchive" : "archive",
+                "aria-label": t(archived ? "action.unarchive" : "action.archive"),
+                title: t(archived ? "action.unarchive" : "action.archive"),
+                onClick: archived ? unarchive : archive,
+              },
+              iconNode(archived ? IconUnarchiveOutline : IconArchiveOutline, 14),
+            )
+          : h("span", { className: "tbw-rowActionSpacer", "aria-hidden": true }),
+        canPin
+          ? h(
+              "button",
+              {
+                type: "button",
+                className: "tbw-rowAction",
+                "data-action": "pin",
+                "aria-label": t(pinned ? "action.unpin" : "action.pin"),
+                title: t(pinned ? "action.unpin" : "action.pin"),
+                onClick: pin,
+              },
+              iconNode(pinned ? IconPinFill : IconPinOutline, 14),
+            )
+          : h("span", { className: "tbw-rowActionSpacer", "aria-hidden": true }),
+      );
     }
 
     /** The preload's titlebar menubar lives inside an open shadow root. */
@@ -484,7 +655,7 @@ loader.load({
      * by the slot renderer; `openSession` / `newSession` come from this entry's
      * `inject` face.
      */
-    function WorkspaceChip({ useWorkspaces, useSessions, useSessionStatus, openSession, newSession, t }: ChipProps) {
+    function WorkspaceChip({ useWorkspaces, useSessions, useSessionStatus, useSessionAccess, openSession, newSession, pinSession, unpinSession, archiveSession, unarchiveSession, t }: ChipProps) {
       const workspaceSnapshot = useWorkspaces((state) => state);
       const sessionSnapshot = useSessions((state) => state);
       const statuses = useSessionStatus((state) => state);
@@ -500,6 +671,7 @@ loader.load({
       const [subPos, setSubPos] = React.useState<FlyoutPosition | null>(null);
       const [viewportWidth, setViewportWidth] = React.useState<number>(() => window.innerWidth);
       const [menuLeft, setMenuLeft] = React.useState<number>(96);
+      const [showArchived, setShowArchived] = React.useState<boolean>(false);
       const [error, setError] = React.useState<string | null>(null);
       const rootRef = React.useRef<HTMLDivElement>(null);
       const menuRef = React.useRef<HTMLDivElement>(null);
@@ -515,9 +687,16 @@ loader.load({
           ? sessionSnapshot.byId
           : {};
 
+      const sessionIds: string[] =
+        sessionSnapshot !== undefined && sessionSnapshot !== null && Array.isArray(sessionSnapshot.ids)
+          ? sessionSnapshot.ids
+          : Object.keys(sessions);
+      const archivedSessionIds = new Set<string>(workspaceSnapshot?.archivedSessionIds ?? []);
+      const pinnedSessionIds = new Set<string>(workspaceSnapshot?.pinnedSessionIds ?? []);
+
       let currentSessionId: string | null = null;
-      for (const id of Object.keys(sessions)) {
-        if ((sessions[id].retainedBy?.mainView ?? 0) > 0) {
+      for (const id of sessionIds) {
+        if ((sessions[id]?.retainedBy?.mainView ?? 0) > 0) {
           currentSessionId = id;
           break;
         }
@@ -527,11 +706,11 @@ loader.load({
         : workspaces.find((item) => Array.isArray(item.sessionIds) && item.sessionIds.includes(currentSessionId));
       // Sessions no workspace claims still belong on the roster, like the
       // sidebar's "Ungrouped" section.
-      const ungrouped = ungroupedItem(workspaces, sessions, currentSessionId, t);
+      const ungrouped = ungroupedItem(workspaces, sessionIds, sessions, currentSessionId, pinnedSessionIds, archivedSessionIds, t);
       const menuWorkspaces: WorkspaceItem[] = ungrouped === undefined ? workspaces : [...workspaces, ungrouped];
       // The chip reports the whole roster's highest state, so a warning in another
       // workspace still reaches the window's titlebar.
-      const global = globalState(menuWorkspaces, statuses, sessions);
+      const global = globalState(menuWorkspaces, statuses, sessions, archivedSessionIds);
       const label = currentWorkspace === undefined ? t("chip.choose") : workspaceTitle(currentWorkspace, t);
       const stateText = statusLabel(global.state, t);
       const ownerTitle = global.workspace !== undefined && (currentWorkspace === undefined || global.workspace.workspaceId !== currentWorkspace.workspaceId)
@@ -541,7 +720,20 @@ loader.load({
       const activeWorkspace = menuWorkspaces.find((item) => item.workspaceId === activeId)
         ?? currentWorkspace
         ?? menuWorkspaces[0];
-      const activeSessions = activeWorkspace === undefined ? [] : visibleSessions(activeWorkspace, sessions, currentSessionId);
+      const activeSessions =
+        activeWorkspace === undefined
+          ? []
+          : visibleSessions(activeWorkspace, sessions, currentSessionId, pinnedSessionIds, archivedSessionIds);
+      const archivedSessions: SessionSummary[] =
+        activeWorkspace === undefined
+          ? []
+          : (Array.isArray(activeWorkspace.sessionIds) ? activeWorkspace.sessionIds : [])
+              .filter((id) => archivedSessionIds.has(id))
+              .map((id) => sessions[id])
+              .filter(
+                (session): session is SessionSummary =>
+                  session !== undefined && !(session.blank === true && session.id !== currentSessionId),
+              );
 
       const openMenu = () => {
         setActiveId(currentWorkspace === undefined ? null : currentWorkspace.workspaceId);
@@ -553,6 +745,24 @@ loader.load({
       React.useEffect(() => {
         ensureStyles();
       }, []);
+
+      // Pin/archive act in place: the flyout stays open so the list can update.
+      const act = (action: () => Promise<unknown> | unknown) => {
+        setError(null);
+        Promise.resolve()
+          .then(action)
+          .then((result) => {
+            if (result !== null && typeof result === "object" && (result as { ok?: boolean }).ok === false) {
+              const message = (result as { error?: { message?: string } }).error?.message ?? "request failed";
+              throw new Error(message);
+            }
+          })
+          .catch((reason) => setError(reason instanceof Error ? reason.message : String(reason)));
+      };
+
+      React.useEffect(() => {
+        setShowArchived(false);
+      }, [open, activeId]);
 
       React.useEffect(() => {
         const onResize = () => setViewportWidth(window.innerWidth);
@@ -700,7 +910,7 @@ loader.load({
         event.preventDefault();
         const sub = subRef.current;
         if (sub === null) return;
-        const rows = [...sub.querySelectorAll<HTMLButtonElement>("button")];
+        const rows = [...sub.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')];
         if (rows.length === 0) return;
         const index = rows.findIndex((row) => row === document.activeElement);
         const delta = event.key === "ArrowDown" ? 1 : -1;
@@ -744,7 +954,7 @@ loader.load({
               menuWorkspaces.length === 0
                 ? h("div", { className: "tbw-empty" }, t("menu.empty"))
                 : menuWorkspaces.map((item) => {
-                    const rowState = workspaceState(item, statuses, sessions);
+                    const rowState = workspaceState(item, statuses, sessions, archivedSessionIds);
                     const active = activeWorkspace !== undefined && activeWorkspace.workspaceId === item.workspaceId;
                     const isCurrent = currentWorkspace !== undefined && currentWorkspace.workspaceId === item.workspaceId;
                     return h(
@@ -767,7 +977,7 @@ loader.load({
                           setAnchorTop(event.currentTarget.getBoundingClientRect().top);
                         },
                         onClick: () => {
-                          const target = bestSession(item, sessions, statuses);
+                          const target = bestSession(item, sessions, statuses, archivedSessionIds);
                           if (target !== undefined) run(() => openSession(target.id));
                           else if (item.workspaceId !== UNGROUPED) run(() => newSession(item.workspaceId));
                         },
@@ -819,26 +1029,54 @@ loader.load({
                   ),
               activeSessions.length === 0
                 ? h("div", { className: "tbw-empty" }, t("menu.emptySessions"))
-                : activeSessions.map((session) => {
-                    const rowState = sessionState(lookup(statuses, session.id));
-                    const isCurrent = session.id === currentSessionId;
-                    return h(
-                      "button",
-                      {
-                        key: session.id,
-                        type: "button",
-                        role: "menuitem",
-                        className: "tbw-item",
-                        "aria-current": isCurrent ? "true" : undefined,
-                        title: [sessionTitle(session, t), statusLabel(rowState, t)].filter(Boolean).join("\n"),
-                        onClick: () => run(() => openSession(session.id)),
-                      },
-                      rowState !== "idle"
-                        ? h("span", { className: "tbw-dot", "aria-hidden": true }, h(StateDot, { state: rowState, size: dotSize(rowState) }))
-                        : h("span", { className: "tbw-dot", "aria-hidden": true }),
-                      h("span", { className: "tbw-itemName" }, sessionTitle(session, t)),
-                    );
-                  }),
+                : activeSessions.map((session) =>
+                    h(SessionRow, {
+                      key: session.id,
+                      session,
+                      state: sessionState(lookup(statuses, session.id)),
+                      current: session.id === currentSessionId,
+                      pinned: pinnedSessionIds.has(session.id),
+                      archived: false,
+                      useSessionAccess,
+                      open: () => run(() => openSession(session.id)),
+                      pin: () =>
+                        act(() =>
+                          pinnedSessionIds.has(session.id) ? unpinSession(session.id) : pinSession(session.id),
+                        ),
+                      archive: () => act(() => archiveSession(session.id)),
+                      unarchive: () => act(() => unarchiveSession(session.id)),
+                      t,
+                    }),
+                  ),
+              archivedSessions.length === 0
+                ? null
+                : h(
+                    "button",
+                    {
+                      type: "button",
+                      className: "tbw-archivedToggle",
+                      onClick: () => setShowArchived((current) => !current),
+                    },
+                    (showArchived ? t("menu.hideArchived") : t("menu.archived")) + " (" + archivedSessions.length + ")",
+                  ),
+              showArchived
+                ? archivedSessions.map((session) =>
+                    h(SessionRow, {
+                      key: session.id,
+                      session,
+                      state: sessionState(lookup(statuses, session.id)),
+                      current: session.id === currentSessionId,
+                      pinned: false,
+                      archived: true,
+                      useSessionAccess,
+                      open: () => run(() => openSession(session.id)),
+                      pin: () => {},
+                      archive: () => {},
+                      unarchive: () => act(() => unarchiveSession(session.id)),
+                      t,
+                    }),
+                  )
+                : null,
             ), document.body)
           : null;
       return h(
@@ -849,7 +1087,7 @@ loader.load({
       );
     }
 
-    const inject = ["slots", "locale", "uiWorkspace"];
+    const inject = ["slots", "locale", "uiWorkspace", "workspaces"];
 
     function apply(ctx: ClientContext) {
       ctx.effect(() => ctx.locale.register(NS, { zh, en }), "titlebar-workspace: dictionaries");
@@ -873,6 +1111,10 @@ loader.load({
             inject: () => ({
               openSession: (sessionId: string) => ctx.uiWorkspace.openSession(sessionId),
               newSession: (workspaceId: string) => ctx.uiWorkspace.startSession(workspaceId),
+              pinSession: (sessionId: string) => ctx.workspaces.pinSession(sessionId),
+              unpinSession: (sessionId: string) => ctx.workspaces.unpinSession(sessionId),
+              archiveSession: (sessionId: string) => ctx.workspaces.archiveSession(sessionId),
+              unarchiveSession: (sessionId: string) => ctx.workspaces.unarchiveSession(sessionId),
             }),
           },
           WorkspaceChip,
