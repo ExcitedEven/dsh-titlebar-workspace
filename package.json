@@ -1,6 +1,6 @@
 {
   "name": "dsh-titlebar-workspace",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Desktop titlebar workspace chip: shows the current workspace in the titlebar and switches it without opening the left sidebar.",
   "license": "MIT",
   "type": "module",
